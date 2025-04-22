@@ -1,134 +1,103 @@
-const Delegate = require('../models/delegateModel');
+// controllers/delegateController.js
+const delegateModel = require('../models/delegateModel');
 
-exports.getAllDelegates = async (req, res) => {
-  try {
-    const delegates = await Delegate.getAllDelegates();
-    res.json(delegates);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.getDelegateById = async (req, res) => {
-  try {
-    const delegateId = req.params.id;
-    const delegate = await Delegate.getDelegateById(delegateId);
-    
-    if (!delegate) {
-      return res.status(404).json({ message: 'Delegate not found' });
+const delegateController = {
+  // Get all delegates
+  getAllDelegates: async (req, res) => {
+    try {
+      const delegates = await delegateModel.getAllDelegates();
+      res.status(200).json({ success: true, data: delegates });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
-    
-    res.json(delegate);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  },
 
-exports.assignCountry = async (req, res) => {
-  try {
-    const { delegateId, countryId } = req.body;
-    
-    if (!delegateId || !countryId) {
-      return res.status(400).json({ message: 'Delegate ID and Country ID are required' });
+  // Get delegate by ID
+  getDelegateById: async (req, res) => {
+    try {
+      const delegateId = req.params.id;
+      const delegate = await delegateModel.getDelegateById(delegateId);
+      if (!delegate) {
+        return res.status(404).json({ success: false, message: 'Delegate not found' });
+      }
+      res.status(200).json({ success: true, data: delegate });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
-    
-    const result = await Delegate.assignCountry(delegateId, countryId);
-    res.json({ 
-      message: 'Country assigned to delegate successfully',
-      assignment: result
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  },
 
-exports.assignBlock = async (req, res) => {
-  try {
-    const { delegateId, blockId } = req.body;
-    
-    if (!delegateId || !blockId) {
-      return res.status(400).json({ message: 'Delegate ID and Block ID are required' });
+  // Assign country to delegate
+  assignCountry: async (req, res) => {
+    try {
+      const { delegateId, countryId } = req.body;
+      const result = await delegateModel.assignCountry(delegateId, countryId);
+      res.status(200).json({ success: true, message: 'Country assigned successfully', data: result });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Assignment failed', error: error.message });
     }
-    
-    const result = await Delegate.assignBlock(delegateId, blockId);
-    res.json({ 
-      message: 'Block assigned to delegate successfully',
-      assignment: result
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  },
 
-exports.assignToCommittee = async (req, res) => {
-  try {
-    const { delegateId, committeeId } = req.body;
-    
-    if (!delegateId || !committeeId) {
-      return res.status(400).json({ message: 'Delegate ID and Committee ID are required' });
+  // Assign block to delegate
+  assignBlock: async (req, res) => {
+    try {
+      const { delegateId, blockId } = req.body;
+      const result = await delegateModel.assignBlock(delegateId, blockId);
+      res.status(200).json({ success: true, message: 'Block assigned successfully', data: result });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Assignment failed', error: error.message });
     }
-    
-    const result = await Delegate.assignToCommittee(delegateId, committeeId);
-    res.json({ 
-      message: 'Delegate assigned to committee successfully',
-      assignment: result
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  },
 
-exports.removeFromCommittee = async (req, res) => {
-  try {
-    const { delegateId, committeeId } = req.body;
-    
-    if (!delegateId || !committeeId) {
-      return res.status(400).json({ message: 'Delegate ID and Committee ID are required' });
+  // Get delegates without country
+  getDelegatesWithoutCountry: async (req, res) => {
+    try {
+      const delegates = await delegateModel.getDelegatesWithoutCountry();
+      res.status(200).json({ success: true, data: delegates });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
-    
-    const result = await Delegate.removeFromCommittee(delegateId, committeeId);
-    res.json({ 
-      message: 'Delegate removed from committee successfully',
-      removal: result
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  },
+
+  // Get delegates without committee
+  getDelegatesWithoutCommittee: async (req, res) => {
+    try {
+      const delegates = await delegateModel.getDelegatesWithoutCommittee();
+      res.status(200).json({ success: true, data: delegates });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+  },
+
+  // Submit position paper
+  submitPositionPaper: async (req, res) => {
+    try {
+      const result = await delegateModel.submitPositionPaper(req.body);
+      res.status(201).json({ success: true, message: 'Position paper submitted successfully', data: result });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Submission failed', error: error.message });
+    }
+  },
+
+  // Get overall leaderboard
+  getOverallLeaderboard: async (req, res) => {
+    try {
+      const leaderboard = await delegateModel.getOverallLeaderboard();
+      res.status(200).json({ success: true, data: leaderboard });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+  },
+
+  // Get committee leaderboard
+  getCommitteeLeaderboard: async (req, res) => {
+    try {
+      const committeeId = req.params.committeeId;
+      const leaderboard = await delegateModel.getCommitteeLeaderboard(committeeId);
+      res.status(200).json({ success: true, data: leaderboard });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
   }
 };
 
-exports.getDelegatesWithoutCommittee = async (req, res) => {
-  try {
-    const delegates = await Delegate.getDelegatesWithoutCommittee();
-    res.json(delegates);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.getDelegatesWithoutCountries = async (req, res) => {
-  try {
-    const delegates = await Delegate.getDelegatesWithoutCountries();
-    res.json(delegates);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.allocateCountries = async (req, res) => {
-  try {
-    const result = await Delegate.allocateCountries();
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.getAvailableCountries = async (req, res) => {
-  try {
-    const committeeId = req.params.committeeId;
-    const countries = await Delegate.getAvailableCountries(committeeId);
-    res.json(countries);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+module.exports = delegateController;

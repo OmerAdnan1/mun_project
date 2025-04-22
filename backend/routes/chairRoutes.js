@@ -9,13 +9,13 @@ router.get('/', chairController.getAllChairs);
 // Get chair by ID
 router.get('/:id', chairController.getChairById);
 
-// Get chair by user ID
-router.get('/user/:userId', chairController.getChairByUserId);
+// Assign committee to chair
+router.post('/assign-committee', chairController.assignCommittee);
 
-// Assign chair to committee
-router.put('/assign', chairController.assignToCommittee);
+// Provide feedback on position paper
+router.post('/provide-feedback', chairController.provideFeedback);
 
-// Unassign chair from committee
-router.put('/unassign/:id', chairController.unassignFromCommittee);
+// Get position papers for a committee
+router.get('/papers/:committeeId', chairController.getCommitteePapers);
 
 module.exports = router;

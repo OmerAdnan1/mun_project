@@ -1,18 +1,33 @@
+// routes/delegateRoutes.js
 const express = require('express');
 const router = express.Router();
 const delegateController = require('../controllers/delegateController');
-const authMiddleware = require('../middleware/authMiddleware');
 
-// Protected routes (admin only)
-router.get('/', authMiddleware, delegateController.getAllDelegates);
-router.get('/:id', authMiddleware, delegateController.getDelegateById);
-router.post('/assign-country', authMiddleware, delegateController.assignCountry);
-router.post('/assign-block', authMiddleware, delegateController.assignBlock);
-router.post('/assign-committee', authMiddleware, delegateController.assignToCommittee);
-router.post('/remove-from-committee', authMiddleware, delegateController.removeFromCommittee);
-router.get('/without-committee/list', authMiddleware, delegateController.getDelegatesWithoutCommittee);
-router.get('/without-countries/list', authMiddleware, delegateController.getDelegatesWithoutCountries);
-router.post('/allocate-countries', authMiddleware, delegateController.allocateCountries);
-router.get('/available-countries/:committeeId', authMiddleware, delegateController.getAvailableCountries);
+// Get all delegates
+router.get('/', delegateController.getAllDelegates);
+
+// Get delegates without country
+router.get('/without-country', delegateController.getDelegatesWithoutCountry);
+
+// Get delegates without committee
+router.get('/without-committee', delegateController.getDelegatesWithoutCommittee);
+
+// Get delegate by ID
+router.get('/:id', delegateController.getDelegateById);
+
+// Assign country to delegate
+router.post('/assign-country', delegateController.assignCountry);
+
+// Assign block to delegate
+router.post('/assign-block', delegateController.assignBlock);
+
+// Submit position paper
+router.post('/submit-paper', delegateController.submitPositionPaper);
+
+// Get overall leaderboard
+router.get('/leaderboard/overall', delegateController.getOverallLeaderboard);
+
+// Get committee leaderboard
+router.get('/leaderboard/committee/:committeeId', delegateController.getCommitteeLeaderboard);
 
 module.exports = router;

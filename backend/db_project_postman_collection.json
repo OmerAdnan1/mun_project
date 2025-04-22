@@ -1,0 +1,262 @@
+{
+    "info": {
+        "_postman_id": "fcb6b9b2-7d18-4c91-9905-3635afb9c2e5",
+        "name": "DB_PROJECT",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": ""
+    },
+    "item": [
+        {
+            "name": "RegisterUser",
+            "request": {
+                "method": "POST",
+                "url": {
+                    "raw": "http://localhost:5000/api/auth/register",
+                    "path": [
+                        "api",
+                        "auth",
+                        "register"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"userName\": \"newdelegate\",\n    \"password\": \"password123\",\n    \"email\": \"newdelegate@example.com\",\n    \"fullName\": \"New Delegate\",\n    \"phoneNumber\": \"1234567890\",\n    \"userTypeFlag\": 1\n}"
+                }
+            }
+        },
+        {
+            "name": "UserLogin",
+            "request": {
+                "method": "POST",
+                "url": {
+                    "raw": "http://localhost:5000/api/auth/login",
+                    "path": [
+                        "api",
+                        "auth",
+                        "login"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"email\": \"admin1@example.com\",\n    \"password\": \"password1\"\n}"
+                }
+            }
+        },
+        {
+            "name": "PrintAllUsers",
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "http://localhost:5000/api/users",
+                    "path": [
+                        "api",
+                        "users"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                }
+            }
+        },
+        {
+            "name": "UserByID",
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "http://localhost:5000/api/users/3",
+                    "path": [
+                        "api",
+                        "users",
+                        "3"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                }
+            }
+        },
+        {
+            "name": "UpdateUser",
+            "request": {
+                "method": "DELETE",
+                "url": {
+                    "raw": "http://localhost:5000/api/users/7",
+                    "path": [
+                        "api",
+                        "users",
+                        "7"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"fullName\": \"Updated Name\",\n    \"phoneNumber\": \"5555555555\"\n}"
+                }
+            }
+        },
+        {
+            "name": "AssignCountryToDelegate",
+            "request": {
+                "method": "POST",
+                "url": {
+                    "raw": "http://localhost:5000/api/delegates/assign-country",
+                    "path": [
+                        "api",
+                        "delegates",
+                        "assign-country"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"delegateId\": 3,\n    \"countryId\": 2\n}"
+                }
+            }
+        },
+        {
+            "name": "AssignBlockToDelegate",
+            "request": {
+                "method": "POST",
+                "url": {
+                    "raw": "http://localhost:5000/api/delegates/assign-block",
+                    "path": [
+                        "api",
+                        "delegates",
+                        "assign-block"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"delegateId\": 3,\n    \"blockId\": 1\n}"
+                }
+            }
+        },
+        {
+            "name": "SubmitPositionPaper",
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "http://localhost:5000/api/delegates/without-country",
+                    "path": [
+                        "api",
+                        "delegates",
+                        "without-country"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"delegateId\": 3,\n    \"submissionDate\": \"2025-04-10T10:00:00\",\n    \"dueDate\": \"2025-04-15T23:59:59\",\n    \"status\": \"Draft\"\n}"
+                }
+            }
+        },
+        {
+            "name": "DelegatesWithoutCountry",
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "http://localhost:5000/api/delegates/without-country",
+                    "path": [
+                        "api",
+                        "delegates",
+                        "without-country"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                }
+            }
+        },
+        {
+            "name": "AssignChairToCommittee",
+            "request": {
+                "method": "POST",
+                "url": {
+                    "raw": "http://localhost:5000/api/chairs/assign-committee",
+                    "path": [
+                        "api",
+                        "chairs",
+                        "assign-committee"
+                    ],
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "5000"
+                },
+                "body": {
+                    "mode": "raw",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    },
+                    "raw": "{\n    \"chairId\": 1,\n    \"committeeId\": 2\n}"
+                }
+            }
+        }
+    ]
+}

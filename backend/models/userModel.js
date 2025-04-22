@@ -1,90 +1,99 @@
-const { sql, pool, poolConnect } = require('../config/db');
+// models/userModel.js
+const { sql, pool } = require('../config/db');
 
-class User {
-  static async register(userData, userTypeFlag) {
+const userModel = {
+  // Get all users
+  getAllUsers: async () => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      request.input('UserName', sql.VarChar(50), userData.username);
-      request.input('Password', sql.VarChar(100), userData.password);  // Should be hashed in controller
-      request.input('Email', sql.VarChar(100), userData.email);
-      request.input('FullName', sql.VarChar(100), userData.fullName);
-      request.input('PhoneNumber', sql.VarChar(15), userData.phoneNumber);
-      request.input('UserTypeFlag', sql.Int, userTypeFlag);  // 1 for Delegate, 2 for Chair
-      
-      const result = await request.execute('sp_RegisterUser');
-      return result;
+      await pool.connect();
+      const result = await pool.request().query('SELECT * FROM [User]');
+      return result.recordset;
     } catch (error) {
+      console.error('Error getting all users:', error);
       throw error;
     }
-  }
+  },
 
-  static async login(email, password) {
+  // Get user by ID
+  getUserById: async (userId) => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      request.input('Email', sql.VarChar(100), email);
-      request.input('Password', sql.VarChar(100), password);
-      
-      const result = await request.execute('sp_LoginUser');
-      return result;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async getUserById(userId) {
-    try {
-      await poolConnect;
-      const request = pool.request();
-      const result = await request.query(`SELECT * FROM [User] WHERE UserId = ${userId}`);
+      await pool.connect();
+      const result = await pool.request()
+        .input('userId', sql.Int, userId)
+        .query('SELECT * FROM [User] WHERE UserId = @userId');
       return result.recordset[0];
     } catch (error) {
+      console.error('Error getting user by ID:', error);
       throw error;
     }
-  }
+  },
 
-  static async updateUser(userId, userData) {
+  // Register user (using stored procedure)
+  registerUser: async (userData) => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      request.input('UserId', sql.Int, userId);
-      
-      if (userData.username) {
-        request.input('UserName', sql.VarChar(50), userData.username);
-      }
-      if (userData.email) {
-        request.input('Email', sql.VarChar(100), userData.email);
-      }
-      if (userData.fullName) {
-        request.input('FullName', sql.VarChar(100), userData.fullName);
-      }
-      if (userData.phoneNumber) {
-        request.input('PhoneNumber', sql.VarChar(15), userData.phoneNumber);
-      }
-      if (userData.password) {
-        request.input('Password', sql.VarChar(100), userData.password);  // Should be hashed in controller
-      }
-      
-      const result = await request.execute('sp_UpdateUserInfo');
+      await pool.connect();
+      const result = await pool.request()
+        .input('UserName', sql.VarChar(50), userData.userName)
+        .input('Password', sql.VarChar(100), userData.password)
+        .input('Email', sql.VarChar(100), userData.email)
+        .input('FullName', sql.VarChar(100), userData.fullName)
+        .input('PhoneNumber', sql.VarChar(15), userData.phoneNumber)
+        .input('UserTypeFlag', sql.Int, userData.userTypeFlag)
+        .execute('sp_RegisterUser');
       return result;
     } catch (error) {
+      console.error('Error registering user:', error);
       throw error;
     }
-  }
+  },
 
-  static async deleteUser(userId) {
+  // Login user (using stored procedure)
+  loginUser: async (email, password) => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      request.input('UserId', sql.Int, userId);
-      
-      const result = await request.execute('sp_DeleteUser');
+      await pool.connect();
+      const result = await pool.request()
+        .input('Email', sql.VarChar(100), email)
+        .input('Password', sql.VarChar(100), password)
+        .execute('sp_LoginUser');
       return result;
     } catch (error) {
+      console.error('Error logging in user:', error);
+      throw error;
+    }
+  },
+
+  // Update user (using stored procedure)
+  updateUser: async (userId, userData) => {
+    try {
+      await pool.connect();
+      const result = await pool.request()
+        .input('UserId', sql.Int, userId)
+        .input('UserName', sql.VarChar(50), userData.userName || null)
+        .input('Email', sql.VarChar(100), userData.email || null)
+        .input('FullName', sql.VarChar(100), userData.fullName || null)
+        .input('PhoneNumber', sql.VarChar(15), userData.phoneNumber || null)
+        .input('Password', sql.VarChar(100), userData.password || null)
+        .execute('sp_UpdateUserInfo');
+      return result;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  },
+
+  // Delete user (using stored procedure)
+  deleteUser: async (userId) => {
+    try {
+      await pool.connect();
+      const result = await pool.request()
+        .input('UserId', sql.Int, userId)
+        .execute('sp_DeleteUser');
+      return result;
+    } catch (error) {
+      console.error('Error deleting user:', error);
       throw error;
     }
   }
-}
+};
 
-module.exports = User;
+module.exports = userModel;

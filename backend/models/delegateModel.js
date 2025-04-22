@@ -1,143 +1,144 @@
-const { sql, pool, poolConnect } = require('../config/db');
+// models/delegateModel.js
+const { sql, pool } = require('../config/db');
 
-class Delegate {
-  static async getAllDelegates() {
+const delegateModel = {
+  // Get all delegates with user info
+  getAllDelegates: async () => {
     try {
-      await poolConnect;
-      const result = await pool.request().query(`
-        SELECT d.DelegateId, u.UserId, u.UserName, u.Email, u.FullName, u.PhoneNumber,
-               c.CountryName, b.BlockName
+      await pool.connect();
+      const query = `
+        SELECT d.*, u.UserName, u.Email, u.FullName, u.PhoneNumber, c.CountryName, b.BlockName
         FROM Delegate d
         JOIN [User] u ON d.UserId = u.UserId
         LEFT JOIN Country c ON d.CountryID = c.CountryID
         LEFT JOIN [Block] b ON d.BlockID = b.BlockId
-      `);
+      `;
+      const result = await pool.request().query(query);
       return result.recordset;
     } catch (error) {
+      console.error('Error getting all delegates:', error);
       throw error;
     }
-  }
+  },
 
-  static async getDelegateById(delegateId) {
+  // Get delegate by ID
+  getDelegateById: async (delegateId) => {
     try {
-      await poolConnect;
-      const result = await pool.request().query(`
-        SELECT d.DelegateId, u.UserId, u.UserName, u.Email, u.FullName, u.PhoneNumber,
-               c.CountryName, b.BlockName
+      await pool.connect();
+      const query = `
+        SELECT d.*, u.UserName, u.Email, u.FullName, u.PhoneNumber, c.CountryName, b.BlockName
         FROM Delegate d
         JOIN [User] u ON d.UserId = u.UserId
         LEFT JOIN Country c ON d.CountryID = c.CountryID
         LEFT JOIN [Block] b ON d.BlockID = b.BlockId
-        WHERE d.DelegateId = ${delegateId}
-      `);
+        WHERE d.DelegateId = @delegateId
+      `;
+      const result = await pool.request()
+        .input('delegateId', sql.Int, delegateId)
+        .query(query);
       return result.recordset[0];
     } catch (error) {
+      console.error('Error getting delegate by ID:', error);
       throw error;
     }
-  }
+  },
 
-  static async assignCountry(delegateId, countryId) {
+  // Assign country to delegate
+  assignCountry: async (delegateId, countryId) => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      await request.query(`
-        UPDATE Delegate
-        SET CountryID = ${countryId}
-        WHERE DelegateId = ${delegateId}
-      `);
-      return { delegateId, countryId };
+      await pool.connect();
+      const result = await pool.request()
+        .input('delegateId', sql.Int, delegateId)
+        .input('countryId', sql.Int, countryId)
+        .query('UPDATE Delegate SET CountryID = @countryId WHERE DelegateId = @delegateId');
+      return result;
     } catch (error) {
+      console.error('Error assigning country to delegate:', error);
       throw error;
     }
-  }
+  },
 
-  static async assignBlock(delegateId, blockId) {
+  // Assign block to delegate
+  assignBlock: async (delegateId, blockId) => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      await request.query(`
-        UPDATE Delegate
-        SET BlockID = ${blockId}
-        WHERE DelegateId = ${delegateId}
-      `);
-      return { delegateId, blockId };
+      await pool.connect();
+      const result = await pool.request()
+        .input('delegateId', sql.Int, delegateId)
+        .input('blockId', sql.Int, blockId)
+        .query('UPDATE Delegate SET BlockID = @blockId WHERE DelegateId = @delegateId');
+      return result;
     } catch (error) {
+      console.error('Error assigning block to delegate:', error);
       throw error;
     }
-  }
+  },
 
-  static async assignToCommittee(delegateId, committeeId) {
+  // Get delegates without country
+  getDelegatesWithoutCountry: async () => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      await request.query(`
-        INSERT INTO DelegateCommittee (DelegateId, CommitteeId)
-        VALUES (${delegateId}, ${committeeId})
-      `);
-      return { delegateId, committeeId };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async removeFromCommittee(delegateId, committeeId) {
-    try {
-      await poolConnect;
-      const request = pool.request();
-      await request.query(`
-        DELETE FROM DelegateCommittee
-        WHERE DelegateId = ${delegateId} AND CommitteeId = ${committeeId}
-      `);
-      return { delegateId, committeeId };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async getDelegatesWithoutCommittee() {
-    try {
-      await poolConnect;
-      const request = pool.request();
-      const result = await request.execute('IdentifyDelegatesWithoutCommittee');
+      await pool.connect();
+      const result = await pool.request().execute('GetDelegatesWithoutCountries');
       return result.recordset;
     } catch (error) {
+      console.error('Error getting delegates without countries:', error);
       throw error;
     }
-  }
+  },
 
-  static async getDelegatesWithoutCountries() {
+  // Get delegates without committee
+  getDelegatesWithoutCommittee: async () => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      const result = await request.execute('GetDelegatesWithoutCountries');
+      await pool.connect();
+      const result = await pool.request().execute('IdentifyDelegatesWithoutCommittee');
       return result.recordset;
     } catch (error) {
+      console.error('Error getting delegates without committee:', error);
       throw error;
     }
-  }
+  },
 
-  static async allocateCountries() {
+  // Submit position paper
+  submitPositionPaper: async (paperData) => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      await request.execute('AllocateCountriesToDelegates');
-      return { message: "Countries allocated successfully" };
+      await pool.connect();
+      const result = await pool.request()
+        .input('DelegateId', sql.Int, paperData.delegateId)
+        .input('SubmissionDate', sql.DateTime, new Date(paperData.submissionDate))
+        .input('DueDate', sql.DateTime, new Date(paperData.dueDate))
+        .input('Status', sql.VarChar(20), paperData.status)
+        .execute('SubmitPositionPaper');
+      return result;
     } catch (error) {
+      console.error('Error submitting position paper:', error);
       throw error;
     }
-  }
+  },
 
-  static async getAvailableCountries(committeeId) {
+  // Get leaderboard for all committees
+  getOverallLeaderboard: async () => {
     try {
-      await poolConnect;
-      const request = pool.request();
-      request.input('CommitteeId', sql.Int, committeeId);
-      const result = await request.execute('GetAvailableCountries');
+      await pool.connect();
+      const result = await pool.request().execute('GetOverallLeaderboard');
       return result.recordset;
     } catch (error) {
+      console.error('Error getting overall leaderboard:', error);
+      throw error;
+    }
+  },
+
+  // Get leaderboard for specific committee
+  getCommitteeLeaderboard: async (committeeId) => {
+    try {
+      await pool.connect();
+      const result = await pool.request()
+        .input('CommitteeId', sql.Int, committeeId)
+        .execute('GetCommitteeLeaderboard');
+      return result.recordset;
+    } catch (error) {
+      console.error('Error getting committee leaderboard:', error);
       throw error;
     }
   }
-}
+};
 
-module.exports = Delegate;
+module.exports = delegateModel;
