@@ -58,7 +58,6 @@ CREATE TABLE [Block] (
 CREATE TABLE Delegate (
     DelegateId INT PRIMARY KEY IDENTITY,
     UserId INT UNIQUE REFERENCES [User](UserId) ON DELETE CASCADE ON UPDATE CASCADE,
-
 	CountryID INT REFERENCES Country(CountryId) ON DELETE CASCADE ON UPDATE CASCADE,
     BlockID INT NULL REFERENCES [Block](BlockId) ON DELETE SET NULL
 );
@@ -387,6 +386,8 @@ BEGIN
     PRINT 'User registered successfully.';
 END;
 
+
+
 GO
 -- Stored Procedure for User Login
 CREATE PROCEDURE sp_LoginUser
@@ -399,21 +400,150 @@ BEGIN
     -- Check if email exists
     IF NOT EXISTS (SELECT 1 FROM [User] WHERE Email = @Email)
     BEGIN
-        PRINT 'Invalid email. Please register first.';
+        -- Return empty set with message
+        SELECT 0 AS Success, 'Invalid email. Please register first.' AS Message;
         RETURN;
     END
 
     -- Check if email and password match
     IF EXISTS (SELECT 1 FROM [User] WHERE Email = @Email AND [Password] = @Password)
     BEGIN
-        PRINT 'You are logged in successfully.';
+        -- Return user data on successful login
+        SELECT 
+            1 AS Success, 
+            'Login successful' AS Message,
+            UserId,
+            UserName,
+            Email,
+            FullName,
+            PhoneNumber
+        FROM [User] 
+        WHERE Email = @Email AND [Password] = @Password;
     END
     ELSE
     BEGIN
-        PRINT 'Incorrect password. Please try again.';
+        -- Return failure message
+        SELECT 0 AS Success, 'Incorrect password. Please try again.' AS Message;
     END
 END;
 GO
+
+exec sp_LoginUser @Email = 'admin1@example.com', @Password = 'password1'
+
+CREATE PROCEDURE sp_GetAllDelegates
+AS
+BEGIN
+    SELECT 
+        d.DelegateId,
+        u.FullName,
+        u.Email,
+        c.CountryName,
+        b.BlockName,
+        STRING_AGG(cm.Name, ', ') AS Committees
+    FROM Delegate d
+    JOIN [User] u ON d.UserId = u.UserId
+    LEFT JOIN Country c ON d.CountryID = c.CountryID
+    LEFT JOIN [Block] b ON d.BlockID = b.BlockId
+    LEFT JOIN DelegateCommittee dc ON d.DelegateId = dc.DelegateId
+    LEFT JOIN Committee cm ON dc.CommitteeId = cm.CommitteeId
+    GROUP BY d.DelegateId, u.FullName, u.Email, c.CountryName, b.BlockName;
+END;
+
+go;
+CREATE PROCEDURE sp_GetDelegateById
+    @DelegateId INT
+AS
+BEGIN
+    SELECT 
+        d.DelegateId,
+        u.FullName,
+        u.Email,
+        u.PhoneNumber,
+        c.CountryName,
+        b.BlockName,
+        STRING_AGG(cm.Name, ', ') AS Committees
+    FROM Delegate d
+    JOIN [User] u ON d.UserId = u.UserId
+    LEFT JOIN Country c ON d.CountryID = c.CountryID
+    LEFT JOIN [Block] b ON d.BlockID = b.BlockId
+    LEFT JOIN DelegateCommittee dc ON d.DelegateId = dc.DelegateId
+    LEFT JOIN Committee cm ON dc.CommitteeId = cm.CommitteeId
+    WHERE d.DelegateId = @DelegateId
+    GROUP BY d.DelegateId, u.FullName, u.Email, u.PhoneNumber, c.CountryName, b.BlockName;
+END;
+go;
+
+CREATE PROCEDURE sp_UpdateDelegate
+    @DelegateId INT,
+    @CountryId INT,
+    @BlockId INT
+AS
+BEGIN
+    UPDATE Delegate
+    SET CountryID = @CountryId,
+        BlockID = @BlockId
+    WHERE DelegateId = @DelegateId;
+END;
+
+go;
+
+CREATE PROCEDURE sp_DeleteDelegate
+    @DelegateId INT
+AS
+BEGIN
+    DECLARE @UserId INT = (SELECT UserId FROM Delegate WHERE DelegateId = @DelegateId);
+    DELETE FROM [User] WHERE UserId = @UserId;
+END;
+
+go;
+
+CREATE VIEW vw_DelegateFullInfo AS
+SELECT 
+    d.DelegateId,
+    u.FullName,
+    u.Email,
+    c.CountryName,
+    b.BlockName,
+    STRING_AGG(DISTINCT cm.Name, ', ') AS Committees,
+    pe.Award,
+    pe.ConferenceName,
+    pe.[Year]
+FROM Delegate d
+JOIN [User] u ON d.UserId = u.UserId
+LEFT JOIN Country c ON d.CountryID = c.CountryID
+LEFT JOIN [Block] b ON d.BlockID = b.BlockId
+LEFT JOIN DelegateCommittee dc ON d.DelegateId = dc.DelegateId
+LEFT JOIN Committee cm ON dc.CommitteeId = cm.CommitteeId
+LEFT JOIN PastExperiences pe ON d.DelegateId = pe.DelegateId
+GROUP BY d.DelegateId, u.FullName, u.Email, c.CountryName, b.BlockName, pe.Award, pe.ConferenceName, pe.[Year];
+
+
+go;
+
+CREATE VIEW vw_DelegatePerformance AS
+SELECT 
+    d.DelegateId,
+    u.FullName,
+    COUNT(DISTINCT a.AttendanceId) AS SessionsAttended,
+    COUNT(DISTINCT m.MotionId) AS MotionsSubmitted,
+    COUNT(DISTINCT v.VoteId) AS VotesCast,
+    COUNT(DISTINCT r.ResolutionId) AS ResolutionsInvolved
+FROM Delegate d
+JOIN [User] u ON d.UserId = u.UserId
+LEFT JOIN Attendance a ON d.DelegateId = a.DelegateId
+LEFT JOIN Motion m ON d.DelegateId = m.SubmittedBy
+LEFT JOIN Vote v ON d.DelegateId = v.DelegateId
+LEFT JOIN Resolution r ON r.SubmissionBlockId = d.BlockID
+GROUP BY d.DelegateId, u.FullName;
+
+
+go;
+
+
+
+
+
+
 
 EXEC sp_RegisterUser 
     @UserName = 'Omer_Kahn',
@@ -425,224 +555,6 @@ EXEC sp_RegisterUser
 GO
 select * from [User]
 select * from Delegate
-
-GO
-
-CREATE PROCEDURE sp_DeleteUser
-    @UserId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if user exists
-    IF NOT EXISTS (SELECT 1 FROM [User] WHERE UserId = @UserId)
-    BEGIN
-        PRINT 'User does not exist.';
-        RETURN;
-    END
-    
-    DELETE FROM [User] WHERE UserId = @UserId;
-    
-    PRINT 'User deleted successfully.';
-END;
-GO
-EXEC sp_DeleteUser
-	@UserId = 5;
-
-GO
-CREATE PROCEDURE sp_UpdateUserInfo
-    @UserId INT,
-    @UserName VARCHAR(50) = NULL,
-    @Email VARCHAR(100) = NULL,
-    @FullName VARCHAR(100) = NULL,
-    @PhoneNumber VARCHAR(15) = NULL,
-    @Password VARCHAR(100) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if user exists
-    IF NOT EXISTS (SELECT 1 FROM [User] WHERE UserId = @UserId)
-    BEGIN
-        PRINT 'User does not exist.';
-        RETURN;
-    END
-    
-    -- Begin building the update statement
-    DECLARE @UpdateSQL NVARCHAR(1000) = 'UPDATE [User] SET ';
-    DECLARE @UpdateCount INT = 0;
-    
-    -- Add parameters to update statement if they're not NULL
-    IF @UserName IS NOT NULL
-    BEGIN
-        -- Check if username is already taken
-        IF EXISTS (SELECT 1 FROM [User] WHERE UserName = @UserName AND UserId != @UserId)
-        BEGIN
-            PRINT 'Username already taken.';
-            RETURN;
-        END
-        
-        SET @UpdateSQL = @UpdateSQL + 'UserName = ''' + @UserName + '''';
-        SET @UpdateCount = @UpdateCount + 1;
-    END
-    
-    IF @Email IS NOT NULL
-    BEGIN
-        -- Check if email is already taken
-        IF EXISTS (SELECT 1 FROM [User] WHERE Email = @Email AND UserId != @UserId)
-        BEGIN
-            PRINT 'Email already taken.';
-            RETURN;
-        END
-        
-        IF @UpdateCount > 0
-            SET @UpdateSQL = @UpdateSQL + ', ';
-            
-        SET @UpdateSQL = @UpdateSQL + 'Email = ''' + @Email + '''';
-        SET @UpdateCount = @UpdateCount + 1;
-    END
-    
-    IF @FullName IS NOT NULL
-    BEGIN
-        IF @UpdateCount > 0
-            SET @UpdateSQL = @UpdateSQL + ', ';
-            
-        SET @UpdateSQL = @UpdateSQL + 'FullName = ''' + @FullName + '''';
-        SET @UpdateCount = @UpdateCount + 1;
-    END
-    
-    IF @PhoneNumber IS NOT NULL
-    BEGIN
-        IF @UpdateCount > 0
-            SET @UpdateSQL = @UpdateSQL + ', ';
-            
-        SET @UpdateSQL = @UpdateSQL + 'PhoneNumber = ''' + @PhoneNumber + '''';
-        SET @UpdateCount = @UpdateCount + 1;
-    END
-    
-    IF @Password IS NOT NULL
-    BEGIN
-        IF @UpdateCount > 0
-            SET @UpdateSQL = @UpdateSQL + ', ';
-            
-        SET @UpdateSQL = @UpdateSQL + 'Password = ''' + @Password + '''';
-        SET @UpdateCount = @UpdateCount + 1;
-    END
-    
-    -- If no updates were specified, return
-    IF @UpdateCount = 0
-    BEGIN
-        PRINT 'No updates specified.';
-        RETURN;
-    END
-    
-    -- Complete the update statement
-    SET @UpdateSQL = @UpdateSQL + ' WHERE UserId = ' + CAST(@UserId AS NVARCHAR(10));
-    
-    -- Execute the update statement
-    EXEC sp_executesql @UpdateSQL;
-    
-    PRINT 'User information updated successfully.';
-END;
-GO
-
--- Case 1: Update just the username
-EXEC sp_UpdateUserInfo 
-    @UserId = 6, 
-    @UserName = 'new_delegate1';
-
-SELECT * from [User]
-select * from Delegate
-
--- Case 2: Update multiple fields
-EXEC sp_UpdateUserInfo 
-    @UserId = 6, 
-    @Email = 'new_Omer@example.com',
-    @FullName = 'Omer Adnan Khan',
-    @PhoneNumber = '5551234567';
-SELECT * from [User]
-select * from Delegate
-
--- Case 3: Update only password
-EXEC sp_UpdateUserInfo 
-    @UserId = 6, 
-    @Password = 'newSecurePassword123';
-SELECT * from [User]
-select * from Delegate
-
--- Case 4: Try to update with already taken username
-EXEC sp_UpdateUserInfo 
-    @UserId = 6, 
-    @UserName = 'admin1'; -- This should fail as 'admin1' is already taken
-SELECT * from [User]
-select * from Delegate
-
--- Case 5: Try to update with already taken email
-EXEC sp_UpdateUserInfo 
-    @UserId = 6, 
-    @Email = 'admin1@example.com'; -- This should fail as this email is already taken
-SELECT * from [User]
-select * from Delegate
-
--- Case 6: Update a non-existent user
-EXEC sp_UpdateUserInfo 
-    @UserId = 999, 
-    @FullName = 'Nobody'; -- This should fail as user 999 doesn't exist
-SELECT * from [User]
-select * from Delegate
-
--- Case 7: Call with no parameters to update
-EXEC sp_UpdateUserInfo 
-    @UserId = 3; -- This should indicate no updates were specified
-SELECT * from [User]
-select * from Delegate
-
--- Case 8: Update all fields at once
-EXEC sp_UpdateUserInfo 
-    @UserId = 6,
-    @UserName = 'Omer_updated',
-    @Email = 'Omernew@example.com',
-    @FullName = 'Omer Adnan Update',
-    @PhoneNumber = '5559991111',
-    @Password = 'SuperSecurePass2025';
-SELECT * from [User]
-select * from Delegate
-
-
-GO
-CREATE PROCEDURE sp_DeleteCommittee
-    @CommitteeId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if committee exists
-    IF NOT EXISTS (SELECT 1 FROM Committee WHERE CommitteeId = @CommitteeId)
-    BEGIN
-        PRINT 'Committee does not exist.';
-        RETURN;
-    END
-    
-    -- Check if there are sessions scheduled for this committee
-    IF EXISTS (SELECT 1 FROM [Session] WHERE CommitteeId = @CommitteeId)
-    BEGIN
-        PRINT 'Cannot delete committee with active sessions. Delete sessions first.';
-        RETURN;
-    END
-    
-    -- Delete delegates from committee (junction table)
-    DELETE FROM DelegateCommittee WHERE CommitteeId = @CommitteeId;
-    
-    -- Remove committee assignment from chairs
-    UPDATE Chair SET CommitteeId = NULL WHERE CommitteeId = @CommitteeId;
-    
-    -- Delete the committee
-    DELETE FROM Committee WHERE CommitteeId = @CommitteeId;
-    
-    PRINT 'Committee deleted successfully.';
-END;
-
-
 GO
 --4
 CREATE PROCEDURE SubmitPositionPaper
@@ -958,47 +870,72 @@ EXEC SubmitMotion
 
 GO
 
+drop procedure InsertCountries
+go;
 CREATE PROCEDURE InsertCountries
 AS
 BEGIN
-    DECLARE @DelegateCount INT; --- HOLDS the max number of delegates in any committee
+    -- Get the total number of delegates
+    DECLARE @TotalDelegates INT;
+    DECLARE @ExistingCountries INT;
+    DECLARE @CountriesToAdd INT;
     DECLARE @Counter INT = 0;
-
-    SELECT @DelegateCount = MAX(DelegateCount)
-    FROM (
-        SELECT CommitteeId, COUNT(DelegateId) AS DelegateCount
-        FROM DelegateCommittee
-        GROUP BY CommitteeId
-    ) AS CommitteeDelegates;
-
-    -- Ensure a valid count
-    IF @DelegateCount IS NULL
-        SET @DelegateCount = 0;
-
-    -- Truncate the Country table before inserting new data
-    TRUNCATE TABLE Country;
-
-    -- Insert only the required number of countries
-    WHILE @Counter < @DelegateCount
-    BEGIN
-        INSERT INTO Country (CountryName, Importance)
-        SELECT TOP (1) CountryName, Importance
-        FROM (VALUES
-            ('United States', 1), ('China', 2), ('Russia', 3), ('United Kingdom', 4), ('France', 5),
-            ('Germany', 6), ('Japan', 7), ('India', 8), ('Brazil', 9), ('South Africa', 10),
-            ('Canada', 11), ('Australia', 12), ('Italy', 13), ('Mexico', 14), ('South Korea', 15),
-            ('Indonesia', 16), ('Turkey', 17), ('Saudi Arabia', 18), ('Argentina', 19), ('Egypt', 20),
-            ('Spain', 21), ('Netherlands', 22), ('Sweden', 23), ('Pakistan', 24), ('Nigeria', 25),
-            ('Thailand', 26), ('Malaysia', 27), ('Vietnam', 28), ('Norway', 29), ('Switzerland', 30),
-            ('Bangladesh', 31), ('Philippines', 32), ('United Arab Emirates', 33), ('Greece', 34),
-            ('Chile', 35), ('Colombia', 36), ('Poland', 37), ('Czech Republic', 38), ('Belgium', 39),
-            ('New Zealand', 40)
-        ) AS CountryList(CountryName, Importance)
-        WHERE NOT EXISTS (SELECT 1 FROM Country WHERE CountryName = CountryList.CountryName);
-
-        SET @Counter = @Counter + 1;
-    END
+    
+    -- Count delegates and existing countries
+    SELECT @TotalDelegates = COUNT(*) FROM Delegate;
+    SELECT @ExistingCountries = COUNT(*) FROM Country;
+    
+    -- Calculate how many countries to add
+    SET @CountriesToAdd = @TotalDelegates - @ExistingCountries;
+    
+    -- Only add countries if needed
+    IF @CountriesToAdd <= 0
+        RETURN;
+    
+    -- Create a temporary table with the list of predefined countries
+    CREATE TABLE #CountryList (
+        CountryName VARCHAR(255),
+        Importance INT,
+        RowNum INT IDENTITY(1,1)
+    );
+    
+    -- Populate the country list
+    INSERT INTO #CountryList (CountryName, Importance)
+    VALUES
+        ('United States', 1), ('China', 2), ('Russia', 3), ('United Kingdom', 4), ('France', 5),
+        ('Germany', 6), ('Japan', 7), ('India', 8), ('Brazil', 9), ('South Africa', 10),
+        ('Canada', 11), ('Australia', 12), ('Italy', 13), ('Mexico', 14), ('South Korea', 15),
+        ('Indonesia', 16), ('Turkey', 17), ('Saudi Arabia', 18), ('Argentina', 19), ('Egypt', 20),
+        ('Spain', 21), ('Netherlands', 22), ('Sweden', 23), ('Pakistan', 24), ('Nigeria', 25),
+        ('Thailand', 26), ('Malaysia', 27), ('Vietnam', 28), ('Norway', 29), ('Switzerland', 30),
+        ('Bangladesh', 31), ('Philippines', 32), ('United Arab Emirates', 33), ('Greece', 34),
+        ('Chile', 35), ('Colombia', 36), ('Poland', 37), ('Czech Republic', 38), ('Belgium', 39),
+        ('New Zealand', 40), ('Denmark', 41), ('Singapore', 42), ('Finland', 43), ('Portugal', 44),
+        ('Israel', 45), ('Ireland', 46), ('Austria', 47), ('Ukraine', 48), ('Qatar', 49),
+        ('Hungary', 50), ('Morocco', 51), ('Peru', 52), ('Romania', 53), ('Algeria', 54),
+        ('Kazakhstan', 55), ('Luxembourg', 56), ('Croatia', 57), ('Lithuania', 58);
+    
+    -- Remove countries that already exist in the database
+    DELETE FROM #CountryList
+    WHERE CountryName IN (SELECT CountryName FROM Country);
+    
+    -- Insert the required number of new countries
+    INSERT INTO Country (CountryName, Importance)
+    SELECT TOP (@CountriesToAdd) CountryName, Importance
+    FROM #CountryList
+    ORDER BY Importance;
+    
+    -- Clean up
+    DROP TABLE #CountryList;
 END;
+
+exec InsertCountries
+
+
+
+select * from Country
+select * from Delegate
+
 
 GO
 CREATE PROCEDURE AllocateCountriesToDelegates
@@ -1067,6 +1004,9 @@ BEGIN
     DROP TABLE #RankedDelegates;
 END;
 
+select * from Country
+exec AllocateCountriesToDelegates
+select * from Delegate
 GO;
 
 CREATE PROCEDURE GetDelegatesWithoutCountries
@@ -1095,8 +1035,6 @@ BEGIN
     LEFT JOIN DelegateCommittee dc ON d.DelegateId = dc.DelegateId
     WHERE dc.DelegateId IS NULL;
 END;
-
-
 
 GO
 
@@ -1203,269 +1141,24 @@ EXEC GetCommitteeLeaderboard @CommitteeId = 1;
 EXEC GetOverallLeaderboard;
 
 
+
 select * from Delegate
 
 select * from [Event]
 select * from Resolution
 select * from Motion
-GO
---CRUD Procedures
-CREATE PROCEDURE sp_DeleteMotion --1086 line not working
-    @MotionId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if motion exists
-    IF NOT EXISTS (SELECT 1 FROM Motion WHERE MotionId = @MotionId)
-    BEGIN
-        PRINT 'Motion does not exist.';
-        RETURN;
-    END
-    
-    -- Get the associated EventId
-    DECLARE @EventId INT;
-    SELECT @EventId = EventId FROM Motion WHERE MotionId = @MotionId;
-    
-    BEGIN TRANSACTION;
-    
-    -- Delete votes associated with this motion
-    DELETE FROM Vote WHERE MotionId = @MotionId;
-    
-    -- Delete the motion
-    DELETE FROM Motion WHERE MotionId = @MotionId;
-    
-	IF NOT EXISTS (SELECT 1 FROM Motion WHERE EventId = @EventId) 
-        AND NOT EXISTS (SELECT 1 FROM Resolution WHERE EventId = @EventId)
-    BEGIN
-        -- Get the SessionId from the Event before deleting it
-        DECLARE @SessionId INT;
-        SELECT @SessionId = SessionId FROM [Event] WHERE EventId = @EventId;
-        
-        -- Update Attendance records to set EventId to NULL where it matches
-        --UPDATE Attendance SET EventId = NULL WHERE EventId = @EventId;
-        
-        -- Then delete the event
-        DELETE FROM [Event] WHERE EventId = @EventId;
-        PRINT 'Motion and associated event deleted successfully.';
-    END
+
+go;
+
+EXEC sp_RegisterUser 
+    @UserName = 'Omer_Kahn',
+    @Password = 'securePass123',
+    @Email = 'Omer@example.com',
+    @FullName = 'Omer Adnan',
+    @PhoneNumber = '03335678910',
+    @UserTypeFlag = 1;  -- 1 for Delegate, 2 for Chair
+
+select * from [User]
+select * from Delegate
 
 
-    COMMIT TRANSACTION;
-END;
-GO
-
-drop procedure sp_DeleteMotion
-
-select * from [Event]
-select * from Motion
-select * from Resolution
-
-GO
-CREATE PROCEDURE sp_DeleteResolution
-    @ResolutionId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if resolution exists
-    IF NOT EXISTS (SELECT 1 FROM Resolution WHERE ResolutionId = @ResolutionId)
-    BEGIN
-        PRINT 'Resolution does not exist.';
-        RETURN;
-    END
-    
-    -- Get the associated EventId
-    DECLARE @EventId INT;
-    SELECT @EventId = EventId FROM Resolution WHERE ResolutionId = @ResolutionId;
-    
-    BEGIN TRANSACTION;
-    
-    -- Delete votes associated with this resolution
-    DELETE FROM Vote WHERE ResolutionId = @ResolutionId;
-    
-    -- Delete the resolution
-    DELETE FROM Resolution WHERE ResolutionId = @ResolutionId;
-    
-    -- Check if this Event has other motions or resolutions
-    IF NOT EXISTS (SELECT 1 FROM Motion WHERE EventId = @EventId) 
-        AND NOT EXISTS (SELECT 1 FROM Resolution WHERE EventId = @EventId)
-    BEGIN
-        -- Update Attendance records to set EventId to NULL where it matches
-        --UPDATE Attendance SET EventId = NULL WHERE EventId = @EventId;
-        
-        -- Then delete the event
-        DELETE FROM [Event] WHERE EventId = @EventId;
-        PRINT 'Resolution and associated event deleted successfully.';
-    END
-    ELSE
-    BEGIN
-        PRINT 'Resolution deleted successfully. Event maintained because other motions/resolutions exist.';
-    END
-    
-    COMMIT TRANSACTION;
-END;
-GO
-
-GO
-CREATE PROCEDURE sp_DeleteBlock
-    @BlockId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if block exists
-    IF NOT EXISTS (SELECT 1 FROM [Block] WHERE BlockId = @BlockId)
-    BEGIN
-        PRINT 'Block does not exist.';
-        RETURN;
-    END
-    
-    -- Check if there are any resolutions submitted by this block
-    IF EXISTS (SELECT 1 FROM Resolution WHERE SubmissionBlockId = @BlockId)
-    BEGIN
-        PRINT 'Cannot delete block that has submitted resolutions.';
-        RETURN;
-    END
-    
-    BEGIN TRANSACTION;
-    
-    -- Remove block assignment from delegates
-    UPDATE Delegate SET BlockID = NULL WHERE BlockID = @BlockId;
-    
-    -- Delete the block
-    DELETE FROM [Block] WHERE BlockId = @BlockId;
-    
-    COMMIT TRANSACTION;
-    
-    PRINT 'Block deleted successfully.';
-END;
-GO
-
-select * from [Block]
-select * from Resolution
-
-GO
-CREATE PROCEDURE sp_EndSession
-    @SessionId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if session exists
-    IF NOT EXISTS (SELECT 1 FROM [Session] WHERE SessionId = @SessionId)
-    BEGIN
-        PRINT 'Session does not exist.';
-        RETURN;
-    END
-    
-    -- Update the session end time to current time if it's still running
-    IF (SELECT EndTime FROM [Session] WHERE SessionId = @SessionId) > GETDATE()
-    BEGIN
-        UPDATE [Session] SET EndTime = GETDATE() WHERE SessionId = @SessionId;
-        PRINT 'Session ended successfully.';
-    END
-    ELSE
-    BEGIN
-        PRINT 'Session was already ended.';
-    END
-END;
-GO
-
-CREATE PROCEDURE sp_CreateNewSession
-    @CommitteeId INT,
-    @StartTime DATETIME,
-    @EndTime DATETIME
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if committee exists
-    IF NOT EXISTS (SELECT 1 FROM Committee WHERE CommitteeId = @CommitteeId)
-    BEGIN
-        PRINT 'Committee does not exist.';
-        RETURN;
-    END
-    
-    -- Validate times
-    IF @StartTime >= @EndTime
-    BEGIN
-        PRINT 'Start time must be before end time.';
-        RETURN;
-    END
-    
-    -- Create the new session
-    INSERT INTO [Session] (CommitteeId, StartTime, EndTime, DayNumber)
-    VALUES (@CommitteeId, @StartTime, @EndTime, 1);
-    
-    PRINT 'Session created successfully.';
-END;
-GO
-
-CREATE PROCEDURE sp_UpdateSessionDay
-    @SessionId INT,
-    @NewDayNumber INT,
-    @NewStartTime DATETIME = NULL,
-    @NewEndTime DATETIME = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Check if session exists
-    IF NOT EXISTS (SELECT 1 FROM [Session] WHERE SessionId = @SessionId)
-    BEGIN
-        PRINT 'Session does not exist.';
-        RETURN;
-    END
-    
-    -- Validate day number
-    IF @NewDayNumber < 1 OR @NewDayNumber > 3
-    BEGIN
-        PRINT 'Day number must be between 1 and 3.';
-        RETURN;
-    END
-    
-    -- Get current values for any NULL parameters
-    DECLARE @StartTime DATETIME, @EndTime DATETIME, @CommitteeId INT;
-    SELECT 
-        @StartTime = CASE WHEN @NewStartTime IS NULL THEN StartTime ELSE @NewStartTime END,
-        @EndTime = CASE WHEN @NewEndTime IS NULL THEN EndTime ELSE @NewEndTime END,
-        @CommitteeId = CommitteeId
-    FROM [Session]
-    WHERE SessionId = @SessionId;
-    
-    -- Validate times
-    IF @StartTime >= @EndTime
-    BEGIN
-        PRINT 'Start time must be before end time.';
-        RETURN;
-    END
-    
-    -- Check for overlapping sessions
-    IF EXISTS (
-        SELECT 1 
-        FROM [Session] 
-        WHERE CommitteeId = @CommitteeId 
-        AND DayNumber = @NewDayNumber
-        AND SessionId != @SessionId
-        AND (
-            (@StartTime BETWEEN StartTime AND EndTime)
-            OR (@EndTime BETWEEN StartTime AND EndTime)
-            OR (StartTime BETWEEN @StartTime AND @EndTime)
-        )
-    )
-    BEGIN
-        PRINT 'Session would overlap with an existing session.';
-        RETURN;
-    END
-    
-    -- Update the session
-    UPDATE [Session]
-    SET DayNumber = @NewDayNumber,
-        StartTime = @StartTime,
-        EndTime = @EndTime
-    WHERE SessionId = @SessionId;
-    
-    PRINT 'Session updated successfully.';
-END;
-GO
