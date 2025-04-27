@@ -1,91 +1,138 @@
-const Committee = require('../models/committeeModel');
+// controllers/committeeController.js
+const Committee = require('../models/Committee');
 
-exports.getAllCommittees = async (req, res) => {
-  try {
-    const committees = await Committee.getAllCommittees();
-    res.json(committees);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.getCommitteeById = async (req, res) => {
-  try {
-    const committeeId = req.params.id;
-    const committee = await Committee.getCommitteeById(committeeId);
-    
-    if (!committee) {
-      return res.status(404).json({ message: 'Committee not found' });
-    }
-    
-    res.json(committee);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
+// Create a new committee
 exports.createCommittee = async (req, res) => {
   try {
-    const { name, topic } = req.body;
+    const committee = await Committee.create(req.body);
     
-    if (!name || !topic) {
-      return res.status(400).json({ message: 'Name and topic are required' });
-    }
-    
-    const result = await Committee.createCommittee(name, topic);
-    res.status(201).json({ 
-      message: 'Committee created successfully',
-      committeeId: result.CommitteeId
+    res.status(201).json({
+      success: true,
+      data: committee
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Create committee error:', error);
+    
+    // Handle specific errors
+    if (error.message.includes('Chair does not exist')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chair does not exist',
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create committee',
+      error: error.message
+    });
   }
 };
 
+// Get committee by ID
+exports.getCommitteeById = async (req, res) => {
+  try {
+    const committee = await Committee.getById(req.params.id);
+    
+    if (!committee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Committee not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: committee
+    });
+  } catch (error) {
+    console.error('Get committee error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve committee',
+      error: error.message
+    });
+  }
+};
+
+// Update committee
 exports.updateCommittee = async (req, res) => {
   try {
-    const committeeId = req.params.id;
-    const { name, topic } = req.body;
+    const committee = await Committee.update(req.params.id, req.body);
     
-    if (!name || !topic) {
-      return res.status(400).json({ message: 'Name and topic are required' });
+    if (!committee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Committee not found'
+      });
     }
     
-    const result = await Committee.updateCommittee(committeeId, name, topic);
-    res.json({ 
-      message: 'Committee updated successfully',
-      committee: result
+    res.status(200).json({
+      success: true,
+      data: committee
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Update committee error:', error);
+    
+    // Handle specific errors
+    if (error.message.includes('Chair does not exist')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chair does not exist',
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update committee',
+      error: error.message
+    });
   }
 };
 
+// Delete committee
 exports.deleteCommittee = async (req, res) => {
   try {
-    const committeeId = req.params.id;
-    await Committee.deleteCommittee(committeeId);
+    await Committee.delete(req.params.id);
     
-    res.json({ message: 'Committee deleted successfully' });
+    res.status(200).json({
+      success: true,
+      message: 'Committee deleted successfully'
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Delete committee error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete committee',
+      error: error.message
+    });
   }
 };
 
-exports.assignChair = async (req, res) => {
+// Get all committees
+exports.getCommittees = async (req, res) => {
   try {
-    const { committeeId, chairId } = req.body;
+    const filters = {
+      difficulty: req.query.difficulty,
+      chair_id: req.query.chair_id ? parseInt(req.query.chair_id) : null,
+      search_term: req.query.search_term
+    };
     
-    if (!committeeId || !chairId) {
-      return res.status(400).json({ message: 'Committee ID and Chair ID are required' });
-    }
+    const committees = await Committee.getAll(filters);
     
-    const result = await Committee.assignChair(committeeId, chairId);
-    res.json({ 
-      message: 'Chair assigned to committee successfully',
-      assignment: result
+    res.status(200).json({
+      success: true,
+      count: committees.length,
+      data: committees
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get committees error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve committees',
+      error: error.message
+    });
   }
 };

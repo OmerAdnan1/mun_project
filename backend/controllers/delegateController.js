@@ -1,103 +1,113 @@
 // controllers/delegateController.js
-const delegateModel = require('../models/delegateModel');
+const Delegate = require('../models/Delegate');
 
-const delegateController = {
-  // Get all delegates
-  getAllDelegates: async (req, res) => {
-    try {
-      const delegates = await delegateModel.getAllDelegates();
-      res.status(200).json({ success: true, data: delegates });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+// Get delegate details
+exports.getDelegateById = async (req, res) => {
+  try {
+    const delegate = await Delegate.getById(req.params.id);
+    
+    if (!delegate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delegate not found'
+      });
     }
-  },
-
-  // Get delegate by ID
-  getDelegateById: async (req, res) => {
-    try {
-      const delegateId = req.params.id;
-      const delegate = await delegateModel.getDelegateById(delegateId);
-      if (!delegate) {
-        return res.status(404).json({ success: false, message: 'Delegate not found' });
-      }
-      res.status(200).json({ success: true, data: delegate });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-  },
-
-  // Assign country to delegate
-  assignCountry: async (req, res) => {
-    try {
-      const { delegateId, countryId } = req.body;
-      const result = await delegateModel.assignCountry(delegateId, countryId);
-      res.status(200).json({ success: true, message: 'Country assigned successfully', data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Assignment failed', error: error.message });
-    }
-  },
-
-  // Assign block to delegate
-  assignBlock: async (req, res) => {
-    try {
-      const { delegateId, blockId } = req.body;
-      const result = await delegateModel.assignBlock(delegateId, blockId);
-      res.status(200).json({ success: true, message: 'Block assigned successfully', data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Assignment failed', error: error.message });
-    }
-  },
-
-  // Get delegates without country
-  getDelegatesWithoutCountry: async (req, res) => {
-    try {
-      const delegates = await delegateModel.getDelegatesWithoutCountry();
-      res.status(200).json({ success: true, data: delegates });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-  },
-
-  // Get delegates without committee
-  getDelegatesWithoutCommittee: async (req, res) => {
-    try {
-      const delegates = await delegateModel.getDelegatesWithoutCommittee();
-      res.status(200).json({ success: true, data: delegates });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-  },
-
-  // Submit position paper
-  submitPositionPaper: async (req, res) => {
-    try {
-      const result = await delegateModel.submitPositionPaper(req.body);
-      res.status(201).json({ success: true, message: 'Position paper submitted successfully', data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Submission failed', error: error.message });
-    }
-  },
-
-  // Get overall leaderboard
-  getOverallLeaderboard: async (req, res) => {
-    try {
-      const leaderboard = await delegateModel.getOverallLeaderboard();
-      res.status(200).json({ success: true, data: leaderboard });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-  },
-
-  // Get committee leaderboard
-  getCommitteeLeaderboard: async (req, res) => {
-    try {
-      const committeeId = req.params.committeeId;
-      const leaderboard = await delegateModel.getCommitteeLeaderboard(committeeId);
-      res.status(200).json({ success: true, data: leaderboard });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
+    
+    res.status(200).json({
+      success: true,
+      data: delegate
+    });
+  } catch (error) {
+    console.error('Get delegate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve delegate',
+      error: error.message
+    });
   }
 };
 
-module.exports = delegateController;
+// Update delegate details
+exports.updateDelegate = async (req, res) => {
+  try {
+    const delegate = await Delegate.update(req.params.id, req.body);
+    
+    if (!delegate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delegate not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: delegate
+    });
+  } catch (error) {
+    console.error('Update delegate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update delegate',
+      error: error.message
+    });
+  }
+};
+
+// Delete delegate
+exports.deleteDelegate = async (req, res) => {
+  try {
+    const deleteUser = req.query.delete_user === 'true';
+    await Delegate.delete(req.params.id, deleteUser);
+    
+    res.status(200).json({
+      success: true,
+      message: deleteUser ? 'Delegate and user deleted successfully' : 'Delegate deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete delegate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete delegate',
+      error: error.message
+    });
+  }
+};
+
+// Add past experience
+exports.addPastExperience = async (req, res) => {
+  try {
+    const experience = await Delegate.addPastExperience(req.params.id, req.body);
+    
+    res.status(201).json({
+      success: true,
+      data: experience
+    });
+  } catch (error) {
+    console.error('Add experience error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add past experience',
+      error: error.message
+    });
+  }
+};
+
+// Get past experiences
+exports.getPastExperiences = async (req, res) => {
+  try {
+    const experiences = await Delegate.getPastExperiences(req.params.id);
+    
+    res.status(200).json({
+      success: true,
+      count: experiences.length,
+      data: experiences
+    });
+  } catch (error) {
+    console.error('Get experiences error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve past experiences',
+      error: error.message
+    });
+  }
+};

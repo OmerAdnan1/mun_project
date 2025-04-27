@@ -1,63 +1,84 @@
 // controllers/chairController.js
-const chairModel = require('../models/chairModel');
+const Chair = require('../models/Chair');
 
-const chairController = {
-  // Get all chairs
-  getAllChairs: async (req, res) => {
-    try {
-      const chairs = await chairModel.getAllChairs();
-      res.status(200).json({ success: true, data: chairs });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
+// Get chair details
+exports.getChairById = async (req, res) => {
+  try {
+    const chair = await Chair.getById(req.params.id);
+    
+    if (!chair) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chair not found'
+      });
     }
-  },
-
-  // Get chair by ID
-  getChairById: async (req, res) => {
-    try {
-      const chairId = req.params.id;
-      const chair = await chairModel.getChairById(chairId);
-      if (!chair) {
-        return res.status(404).json({ success: false, message: 'Chair not found' });
-      }
-      res.status(200).json({ success: true, data: chair });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
-  },
-
-  // Assign committee to chair
-  assignCommittee: async (req, res) => {
-    try {
-      const { chairId, committeeId } = req.body;
-      const result = await chairModel.assignToCommittee(chairId, committeeId);
-      res.status(200).json({ success: true, message: 'Committee assigned successfully', data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Assignment failed', error: error.message });
-    }
-  },
-
-  // Provide feedback on position paper
-  provideFeedback: async (req, res) => {
-    try {
-      const { paperId, feedback } = req.body;
-      const result = await chairModel.provideFeedback(paperId, feedback);
-      res.status(200).json({ success: true, message: 'Feedback provided successfully', data: result });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Failed to provide feedback', error: error.message });
-    }
-  },
-
-  // Get position papers for a committee
-  getCommitteePapers: async (req, res) => {
-    try {
-      const committeeId = req.params.committeeId;
-      const papers = await chairModel.getCommitteePapers(committeeId);
-      res.status(200).json({ success: true, data: papers });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server error', error: error.message });
-    }
+    
+    res.status(200).json({
+      success: true,
+      data: chair
+    });
+  } catch (error) {
+    console.error('Get chair error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve chair',
+      error: error.message
+    });
   }
 };
 
-module.exports = chairController;
+// Update chair details
+exports.updateChair = async (req, res) => {
+  try {
+    const chair = await Chair.update(req.params.id, req.body);
+    
+    if (!chair) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chair not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: chair
+    });
+  } catch (error) {
+    console.error('Update chair error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update chair',
+      error: error.message
+    });
+  }
+};
+
+// Delete chair
+exports.deleteChair = async (req, res) => {
+  try {
+    const deleteUser = req.query.delete_user === 'true';
+    await Chair.delete(req.params.id, deleteUser);
+    
+    res.status(200).json({
+      success: true,
+      message: deleteUser ? 'Chair and user deleted successfully' : 'Chair deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete chair error:', error);
+    
+    // Handle specific error for chair assigned to committees
+    if (error.message.includes('Cannot delete chair who is assigned to a committee')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete chair who is assigned to a committee',
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete chair',
+      error: error.message
+    });
+  }
+};

@@ -3,31 +3,19 @@ const express = require('express');
 const router = express.Router();
 const delegateController = require('../controllers/delegateController');
 
-// Get all delegates
-router.get('/', delegateController.getAllDelegates);
-
-// Get delegates without country
-router.get('/without-country', delegateController.getDelegatesWithoutCountry);
-
-// Get delegates without committee
-router.get('/without-committee', delegateController.getDelegatesWithoutCommittee);
-
 // Get delegate by ID
 router.get('/:id', delegateController.getDelegateById);
 
-// Assign country to delegate
-router.post('/assign-country', delegateController.assignCountry);
+// Update delegate
+router.put('/:id', delegateController.updateDelegate);
 
-// Assign block to delegate
-router.post('/assign-block', delegateController.assignBlock);
+// Delete delegate
+router.delete('/:id', delegateController.deleteDelegate);
 
-// Submit position paper
-router.post('/submit-paper', delegateController.submitPositionPaper);
+// Add past experience
+router.post('/:id/experiences', delegateController.addPastExperience);
 
-// Get overall leaderboard
-router.get('/leaderboard/overall', delegateController.getOverallLeaderboard);
-
-// Get committee leaderboard
-router.get('/leaderboard/committee/:committeeId', delegateController.getCommitteeLeaderboard);
+// Get past experiences
+router.get('/:id/experiences', delegateController.getPastExperiences);
 
 module.exports = router;
