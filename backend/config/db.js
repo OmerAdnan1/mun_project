@@ -30,6 +30,6 @@ connectDB();
 
 module.exports = {
     sql,
-    pool,
-    poolConnect
+    poolPromise: poolConnect
 };
+

@@ -1,4 +1,3 @@
-// routes/chairRoutes.js
 const express = require('express');
 const router = express.Router();
 const chairController = require('../controllers/chairController');

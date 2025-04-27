@@ -1,18 +1,17 @@
-// controllers/chairController.js
 const Chair = require('../models/Chair');
 
-// Get chair details
+// Get chair by ID
 exports.getChairById = async (req, res) => {
   try {
     const chair = await Chair.getById(req.params.id);
-    
+
     if (!chair) {
       return res.status(404).json({
         success: false,
         message: 'Chair not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: chair
@@ -27,18 +26,18 @@ exports.getChairById = async (req, res) => {
   }
 };
 
-// Update chair details
+// Update chair
 exports.updateChair = async (req, res) => {
   try {
     const chair = await Chair.update(req.params.id, req.body);
-    
+
     if (!chair) {
       return res.status(404).json({
         success: false,
         message: 'Chair not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: chair
@@ -56,21 +55,20 @@ exports.updateChair = async (req, res) => {
 // Delete chair
 exports.deleteChair = async (req, res) => {
   try {
-    const deleteUser = req.query.delete_user === 'true';
-    await Chair.delete(req.params.id, deleteUser);
-    
+    await Chair.delete(req.params.id);
+
     res.status(200).json({
       success: true,
-      message: deleteUser ? 'Chair and user deleted successfully' : 'Chair deleted successfully'
+      message: 'Chair deleted successfully'
     });
   } catch (error) {
     console.error('Delete chair error:', error);
     
-    // Handle specific error for chair assigned to committees
-    if (error.message.includes('Cannot delete chair who is assigned to a committee')) {
+    // Handle specific errors
+    if (error.message.includes('Cannot delete chair that is assigned to committees')) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete chair who is assigned to a committee',
+        message: 'Cannot delete chair that is assigned to committees. Reassign committees first.',
         error: error.message
       });
     }
