@@ -2,45 +2,201 @@
 // This file contains functions to interact with the backend API
 // For demo purposes, most functions will return mock data when the API is not available
 
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+
+// Types
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  // Add other user fields
+}
+
+interface Delegate {
+  id: string;
+  name: string;
+  // Add other delegate fields
+}
+
+interface Committee {
+  id: string;
+  name: string;
+  // Add other committee fields
+}
+
+// ... Add other interfaces as needed
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+class ApiService {
+  private api: AxiosInstance;
 
-// Add request interceptor for adding auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+  constructor() {
+    this.api = axios.create({
+      baseURL: API_BASE_URL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.setupInterceptors();
   }
-);
 
-// Add response interceptor for handling errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access (e.g., redirect to login)
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
+  private setupInterceptors() {
+    // Request interceptor
+    this.api.interceptors.request.use(
+      (config: AxiosRequestConfig) => {
+        const token = localStorage.getItem('token');
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error: AxiosError) => Promise.reject(error)
+    );
+
+    // Response interceptor
+    this.api.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      (error: AxiosError) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
   }
-);
 
-export default api;
+  // User APIs
+  async login(email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> {
+    const response = await this.api.post('/users/login', { email, password });
+    return response.data;
+  }
+
+  async register(userData: Partial<User>): Promise<ApiResponse<User>> {
+    const response = await this.api.post('/users/register', userData);
+    return response.data;
+  }
+
+  // Delegate APIs
+  async getDelegates(): Promise<ApiResponse<Delegate[]>> {
+    const response = await this.api.get('/delegates');
+    return response.data;
+  }
+
+  async getDelegateById(id: string): Promise<ApiResponse<Delegate>> {
+    const response = await this.api.get(`/delegates/${id}`);
+    return response.data;
+  }
+
+  // Committee APIs
+  async getCommittees(): Promise<ApiResponse<Committee[]>> {
+    const response = await this.api.get('/committees');
+    return response.data;
+  }
+
+  async getCommitteeById(id: string): Promise<ApiResponse<Committee>> {
+    const response = await this.api.get(`/committees/${id}`);
+    return response.data;
+  }
+
+  // Document APIs
+  async getDocuments(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/documents');
+    return response.data;
+  }
+
+  async uploadDocument(formData: FormData): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  // Attendance APIs
+  async getAttendances(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/attendances');
+    return response.data;
+  }
+
+  async markAttendance(data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/attendances', data);
+    return response.data;
+  }
+
+  // Score APIs
+  async getScores(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/scores');
+    return response.data;
+  }
+
+  async addScore(data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/scores', data);
+    return response.data;
+  }
+
+  // Event APIs
+  async getEvents(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/events');
+    return response.data;
+  }
+
+  async createEvent(data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/events', data);
+    return response.data;
+  }
+
+  // Vote APIs
+  async getVotes(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/votes');
+    return response.data;
+  }
+
+  async castVote(data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/votes', data);
+    return response.data;
+  }
+
+  // Delegate Assignment APIs
+  async getDelegateAssignments(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/delegate-assignments');
+    return response.data;
+  }
+
+  async assignDelegate(data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/delegate-assignments', data);
+    return response.data;
+  }
+
+  // Country APIs
+  async getCountries(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/countries');
+    return response.data;
+  }
+
+  // Block APIs
+  async getBlocks(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/blocks');
+    return response.data;
+  }
+
+  // Admin APIs
+  async getAdmins(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/admins');
+    return response.data;
+  }
+}
+
+export const apiService = new ApiService();
 
 // Helper function to get auth token
 const getAuthToken = () => {
