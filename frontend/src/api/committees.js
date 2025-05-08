@@ -83,6 +83,11 @@ const committeesAPI = {
   getCommitteeEvents: (id, type = null) => {
     return instance.get(`/committees/${id}/events${type ? `?type=${type}` : ""}`)
   },
+
+  // Get committee blocks
+  getCommitteeBlocks: (id) => {
+    return instance.get(`/committees/${id}/blocks`)
+  },
 }
 
 export default committeesAPI
