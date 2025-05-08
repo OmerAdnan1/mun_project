@@ -143,4 +143,27 @@ router.get("/:id/scores", async (req, res) => {
   }
 })
 
+// Register and assign delegate to committee
+router.post("/:id/register-assign", async (req, res) => {
+  try {
+    const { id } = req.params
+    const { committee_id } = req.body
+
+    const pool = await poolPromise
+    const result = await pool
+      .request()
+      .input("DelegateId", sql.Int, id)
+      .input("CommitteeId", sql.Int, committee_id)
+      .execute("AllocateCountryToSingleDelegate")
+
+    res.status(201).json({
+      message: "Delegate registered and assigned successfully",
+      assignment: result.recordset[0]
+    })
+  } catch (err) {
+    console.error("Error in delegate registration and assignment:", err)
+    res.status(500).json({ error: "Failed to register and assign delegate", details: err.message })
+  }
+})
+
 module.exports = router

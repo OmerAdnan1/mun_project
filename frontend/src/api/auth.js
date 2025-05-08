@@ -22,7 +22,10 @@ instance.interceptors.response.use(
 const authAPI = {
   // Register a new user
   register: (userData) => {
-    return instance.post("/users/register", userData)
+    return instance.post("/users/register", userData).then(response => {
+      // Return the user_id from the response
+      return { user_id: response.user_id }
+    })
   },
 
   // Login user

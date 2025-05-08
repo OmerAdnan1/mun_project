@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useContext } from "react"
+import { useState, useContext, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { AuthContext } from "../context/AuthContext"
+import axios from "axios"
 
 const RegisterPage = () => {
   const [step, setStep] = useState(1)
+  const [committees, setCommittees] = useState([])
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -15,10 +17,25 @@ const RegisterPage = () => {
     phone: "",
     experience_level: "beginner",
     emergency_contact: "",
+    committee: "",
   })
   const [formError, setFormError] = useState("")
   const { register, loading } = useContext(AuthContext)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const fetchCommittees = async () => {
+      try {
+        const response = await axios.get('/api/committees')
+        setCommittees(response.data)
+      } catch (error) {
+        console.error('Error fetching committees:', error)
+        setFormError('Failed to load committees')
+      }
+    }
+
+    fetchCommittees()
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -59,7 +76,24 @@ const RegisterPage = () => {
     try {
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...userData } = formData
-      await register(userData)
+      
+      // First register the user
+      const response = await register(userData)
+      
+      // If registration is successful and user is a delegate, make both API calls
+      if (response && formData.role === "delegate") {
+        // 1. Update delegate information
+        await axios.put(`/api/delegates/${response.user_id}`, {
+          experience_level: formData.experience_level,
+          emergency_contact: formData.emergency_contact
+        })
+
+        // 2. Assign delegate to committee using the delegates route
+        await axios.post(`/api/delegates/${response.user_id}/register-assign`, {
+          committee_id: formData.committee
+        })
+      }
+      
       navigate("/login")
     } catch (err) {
       setFormError(err.response?.data?.error || "Registration failed")
@@ -233,6 +267,26 @@ const RegisterPage = () => {
 
               {formData.role === "delegate" && (
                 <>
+                  <div>
+                    <label htmlFor="committee" className="block text-sm font-medium text-gray-700">
+                      Committee
+                    </label>
+                    <select
+                      id="committee"
+                      name="committee"
+                      required
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      value={formData.committee}
+                      onChange={handleChange}
+                    >
+                      <option value="">Select a committee</option>
+                      {committees.map((committee) => (
+                        <option key={committee.committee_id} value={committee.committee_id}>
+                          {committee.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label htmlFor="experience_level" className="block text-sm font-medium text-gray-700">
                       Experience Level
