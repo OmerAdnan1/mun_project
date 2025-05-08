@@ -1,7 +1,6 @@
 const express = require("express")
 const router = express.Router()
 const { poolPromise, sql } = require("../config/db")
-const bcrypt = require("bcryptjs")
 
 // Register a new user
 router.post("/register", async (req, res) => {
@@ -19,8 +18,8 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "User with this email already exists" })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // Use plain password
+    const plainPassword = password
 
     // Create user transaction
     const transaction = new sql.Transaction(pool)
@@ -33,7 +32,7 @@ router.post("/register", async (req, res) => {
         .request()
         .input("full_name", sql.NVarChar, full_name)
         .input("email", sql.NVarChar, email)
-        .input("password", sql.NVarChar, hashedPassword)
+        .input("password", sql.NVarChar, plainPassword)
         .input("role", sql.NVarChar, role)
         .input("phone", sql.NVarChar, phone)
         .output("user_id", sql.Int)
@@ -124,9 +123,9 @@ router.put("/:id", async (req, res) => {
     const { id } = req.params
     const { full_name, email, password, phone } = req.body
 
-    let hashedPassword = null
+    let plainPassword = null
     if (password) {
-      hashedPassword = await bcrypt.hash(password, 10)
+      plainPassword = password
     }
 
     const pool = await poolPromise
@@ -134,7 +133,7 @@ router.put("/:id", async (req, res) => {
       .request()
       .input("user_id", sql.Int, id)
       .input("email", sql.NVarChar, email)
-      .input("password", sql.NVarChar, hashedPassword)
+      .input("password", sql.NVarChar, plainPassword)
       .input("full_name", sql.NVarChar, full_name)
       .input("phone", sql.NVarChar, phone)
       .execute("sp_UpdateUser")
