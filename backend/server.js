@@ -4,7 +4,6 @@ const morgan = require('morgan');
 require('dotenv').config();
 const db = require('./config/db'); // 🛠️ IMPORT your database connection here
 const bodyParser = require('body-parser');
-const apiRoutes = require('./routes/api');
 
 // Import routes
 const userRoutes = require('./routes/userRoutes');
@@ -31,9 +30,6 @@ app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// API Routes
-app.use('/api', apiRoutes);
-
 // Default Route
 app.get('/', (req, res) => {
   res.send('MUN Management System Backend is Running 🚀');
@@ -44,6 +40,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/delegates', delegateRoutes);
 app.use('/api/chairs', chairRoutes);
 app.use('/api/committees', committeeRoutes);
+app.use('/api/committees/chair', committeeRoutes); // Uncomment if needed
 app.use('/api/blocks', blockRoutes);
 app.use('/api/countries', CountryRoutes);
 app.use('/api/admins', adminRoutes);

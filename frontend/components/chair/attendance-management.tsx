@@ -1,71 +1,58 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle, Clock, Save, X } from "lucide-react"
+import { AlertCircle, CheckCircle, Clock, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { apiService } from "@/lib/api"
 
 interface AttendanceManagementProps {
   committeeId: string
+  attendance: any[]
+  delegates: any[]
 }
 
-export function AttendanceManagement({ committeeId }: AttendanceManagementProps) {
-  const [delegates] = useState([
-    { id: "1", name: "John Smith", country: "France", status: "present" },
-    { id: "2", name: "Emma Johnson", country: "Germany", status: "present" },
-    { id: "3", name: "Michael Brown", country: "Japan", status: "late" },
-    { id: "4", name: "Sophia Garcia", country: "Brazil", status: "present" },
-    { id: "5", name: "William Davis", country: "India", status: "absent" },
-    { id: "6", name: "Olivia Wilson", country: "South Africa", status: "present" },
-    { id: "7", name: "James Miller", country: "Australia", status: "late" },
-    { id: "8", name: "Ava Martinez", country: "Canada", status: "present" },
-    { id: "9", name: "Alexander Lee", country: "Mexico", status: "absent" },
-    { id: "10", name: "Isabella Taylor", country: "Italy", status: "present" },
-  ])
-
-  const [attendanceData, setAttendanceData] = useState<Record<string, string>>(
-    delegates.reduce(
-      (acc, delegate) => {
-        acc[delegate.id] = delegate.status
-        return acc
-      },
-      {} as Record<string, string>,
-    ),
-  )
-
-  const [session, setSession] = useState("morning")
+export function AttendanceManagement({ committeeId, attendance, delegates }: AttendanceManagementProps) {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+  const [localAttendance, setLocalAttendance] = useState<Record<string, string>>({})
 
-  const handleStatusChange = (delegateId: string, status: string) => {
-    setAttendanceData((prev) => ({
-      ...prev,
-      [delegateId]: status,
-    }))
-  }
+  // Reset local attendance when date changes
+  useEffect(() => {
+    setLocalAttendance({})
+  }, [date])
 
-  const handleSubmit = async () => {
+  // Create attendance map from API data
+  const attendanceMap = attendance.reduce((acc, record) => {
+    const recordDate = record.date.split('T')[0]
+    acc[record.delegate_id + '_' + recordDate] = record.status
+    return acc
+  }, {} as Record<string, string>)
+
+  // Show all delegates, default to absent if no record for date
+  const filteredAttendance = delegates.map((delegate) => {
+    const key = delegate.delegate_id + '_' + date
+    const status = localAttendance[delegate.delegate_id] ?? attendanceMap[key] ?? "absent"
+    return { ...delegate, status }
+  })
+
+  // Handle status change: if no record, create one via API
+  const handleStatusChange = async (delegateId: string, status: string) => {
     setLoading(true)
-
     try {
-      // In a real app, this would call the API
-      // await saveAttendance(committeeId, { date, session, attendance: attendanceData })
-
-      toast({
-        title: "Attendance saved",
-        description: "The attendance record has been saved successfully.",
+      await apiService.markAttendance({
+        user_id: delegateId,
+        committee_id: committeeId,
+        date,
+        status,
       })
+      setLocalAttendance((prev) => ({ ...prev, [delegateId]: status }))
+      toast({ title: "Attendance updated", description: `Marked as ${status}` })
     } catch (error) {
-      console.error("Save attendance error:", error)
-      toast({
-        variant: "destructive",
-        title: "Failed to save attendance",
-        description: "There was an error saving the attendance record. Please try again.",
-      })
+      toast({ variant: "destructive", title: "Failed to update attendance" })
     } finally {
       setLoading(false)
     }
@@ -98,21 +85,6 @@ export function AttendanceManagement({ committeeId }: AttendanceManagementProps)
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-
-            <div className="space-y-2">
-              <label htmlFor="session" className="text-sm font-medium">
-                Session
-              </label>
-              <Select value={session} onValueChange={setSession}>
-                <SelectTrigger id="session">
-                  <SelectValue placeholder="Select session" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="morning">Morning Session (9:00 AM - 12:00 PM)</SelectItem>
-                  <SelectItem value="afternoon">Afternoon Session (2:00 PM - 5:00 PM)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="rounded-md border">
@@ -122,35 +94,38 @@ export function AttendanceManagement({ committeeId }: AttendanceManagementProps)
               <div className="col-span-5">Status</div>
             </div>
             <div className="divide-y">
-              {delegates.map((delegate) => (
-                <div key={delegate.id} className="grid grid-cols-12 px-4 py-3 text-sm">
-                  <div className="col-span-4 font-medium">{delegate.name}</div>
-                  <div className="col-span-3">{delegate.country}</div>
+              {filteredAttendance.map((delegate) => (
+                <div key={delegate.delegate_id} className="grid grid-cols-12 px-4 py-3 text-sm">
+                  <div className="col-span-4 font-medium">{delegate.delegate_name}</div>
+                  <div className="col-span-3">{delegate.country_name}</div>
                   <div className="col-span-5">
                     <div className="flex gap-2">
                       <Button
-                        variant={attendanceData[delegate.id] === "present" ? "default" : "outline"}
+                        variant={delegate.status === "present" ? "default" : "outline"}
                         size="sm"
-                        className={attendanceData[delegate.id] === "present" ? "bg-green-600 hover:bg-green-700" : ""}
-                        onClick={() => handleStatusChange(delegate.id, "present")}
+                        className={delegate.status === "present" ? "bg-green-600 hover:bg-green-700" : ""}
+                        onClick={() => handleStatusChange(delegate.delegate_id, "present")}
+                        disabled={loading}
                       >
                         <CheckCircle className="mr-1 h-4 w-4" />
                         Present
                       </Button>
                       <Button
-                        variant={attendanceData[delegate.id] === "late" ? "default" : "outline"}
+                        variant={delegate.status === "late" ? "default" : "outline"}
                         size="sm"
-                        className={attendanceData[delegate.id] === "late" ? "bg-amber-600 hover:bg-amber-700" : ""}
-                        onClick={() => handleStatusChange(delegate.id, "late")}
+                        className={delegate.status === "late" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                        onClick={() => handleStatusChange(delegate.delegate_id, "late")}
+                        disabled={loading}
                       >
                         <Clock className="mr-1 h-4 w-4" />
                         Late
                       </Button>
                       <Button
-                        variant={attendanceData[delegate.id] === "absent" ? "default" : "outline"}
+                        variant={delegate.status === "absent" ? "default" : "outline"}
                         size="sm"
-                        className={attendanceData[delegate.id] === "absent" ? "bg-red-600 hover:bg-red-700" : ""}
-                        onClick={() => handleStatusChange(delegate.id, "absent")}
+                        className={delegate.status === "absent" ? "bg-red-600 hover:bg-red-700" : ""}
+                        onClick={() => handleStatusChange(delegate.delegate_id, "absent")}
+                        disabled={loading}
                       >
                         <X className="mr-1 h-4 w-4" />
                         Absent
@@ -160,13 +135,6 @@ export function AttendanceManagement({ committeeId }: AttendanceManagementProps)
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleSubmit} disabled={loading}>
-              <Save className="mr-2 h-4 w-4" />
-              {loading ? "Saving..." : "Save Attendance"}
-            </Button>
           </div>
         </CardContent>
       </Card>

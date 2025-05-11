@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { loginUser } from "@/lib/api"
+import { apiService } from "@/lib/api"
 
 interface User {
   id: string
@@ -46,21 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await loginUser({ email, password })
-
-      // For demo purposes, we'll simulate a successful login with mock data if API fails
-      const userData = response?.data || {
-        user_id: "user_123",
-        name: email.split("@")[0],
-        email,
-        role: email.includes("admin") ? "admin" : email.includes("chair") ? "chair" : "delegate",
+      const response = await apiService.login(email, password)
+      
+      if (!response.success) {
+        throw new Error(response.message || "Login failed")
       }
 
-      const token = response?.token || "mock_token_123"
+      const userData = response.data
 
-      const user = {
+      const user: User = {
         id: userData.user_id,
-        name: userData.name || email.split("@")[0],
+        name: userData.full_name || email.split("@")[0],
         email,
         role: userData.role as "delegate" | "chair" | "admin",
       }
@@ -69,9 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store in localStorage
       localStorage.setItem("mun_user", JSON.stringify(user))
-      localStorage.setItem("mun_token", token)
-
-      return userData
+      localStorage.setItem("mun_token", "dummy_token") // Replace with actual token when implemented
     } catch (error) {
       console.error("Login error:", error)
       throw error

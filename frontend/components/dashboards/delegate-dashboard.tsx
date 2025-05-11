@@ -10,87 +10,110 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, Calendar, CheckCircle, Clock, Download, FileText, Flag, Globe, MapPin, X } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
-import { getDelegateAssignments, getDelegateScores, getDelegateAttendance, getDelegateDocuments } from "@/lib/api"
+import { apiService } from "@/lib/api"
+
+interface Assignment {
+  assignment_id: string;
+  delegate_id: string;
+  committee_id: string;
+  country_id: string;
+  committee_name: string;
+  country_name: string;
+  topic: string;
+  position: string;
+}
+
+interface Score {
+  score_id: string;
+  category: string;
+  points: number;
+  timestamp: string;
+  comments: string;
+}
+
+interface Attendance {
+  id: string;
+  committee_name: string;
+  date: string;
+  status: string;
+}
+
+interface Document {
+  document_id: string;
+  title: string;
+  type: string;
+  status: string;
+  feedback: string | null;
+}
 
 export function DelegateDashboard() {
   const { user } = useAuth()
-  const [assignment, setAssignment] = useState<any>(null)
-  const [scores, setScores] = useState<any[]>([])
-  const [attendance, setAttendance] = useState<any[]>([])
-  const [documents, setDocuments] = useState<any[]>([])
+  const [assignment, setAssignment] = useState<Assignment | null>(null)
+  const [scores, setScores] = useState<Score[]>([])
+  const [attendance, setAttendance] = useState<Attendance[]>([])
+  const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchDelegateData = async () => {
       try {
-        if (!user?.id) return
+        if (!user?.id) {
+          console.log("No user ID available")
+          return
+        }
+
+        console.log("Fetching data for user ID:", user.id)
 
         // Fetch delegate assignment
-        const assignmentData = await getDelegateAssignments(user.id)
-        setAssignment(assignmentData[0] || null)
+        console.log("Fetching delegate assignments...")
+        const assignmentResponse = await apiService.getDelegateAssignments(user.id)
+        console.log("Delegate assignments response:", JSON.stringify(assignmentResponse, null, 2))
+        if (assignmentResponse.success && assignmentResponse.data.length > 0) {
+          setAssignment(assignmentResponse.data[0])
+        } else {
+          console.log("No assignments found or error in response")
+        }
 
         // Fetch scores
-        const scoresData = await getDelegateScores(user.id)
-        setScores(scoresData)
+        console.log("Fetching scores...")
+        const scoresResponse = await apiService.getDelegateScores(user.id)
+        console.log("Scores response:", JSON.stringify(scoresResponse, null, 2))
+        if (scoresResponse.success) {
+          // Map legacy fields to expected fields
+          setScores(
+            scoresResponse.data.map((score: any) => ({
+              ...score,
+              timestamp: score.timestamp || score.date || null,
+              comments: score.comments || score.notes || null,
+            }))
+          )
+        } else {
+          console.log("No scores found or error in response")
+        }
 
         // Fetch attendance
-        const attendanceData = await getDelegateAttendance(user.id)
-        setAttendance(attendanceData)
+        console.log("Fetching attendance...")
+        const attendanceResponse = await apiService.getDelegateAttendance(user.id)
+        console.log("Attendance response:", JSON.stringify(attendanceResponse, null, 2))
+        if (attendanceResponse.success) {
+          setAttendance(attendanceResponse.data)
+        } else {
+          console.log("No attendance records found or error in response")
+        }
 
         // Fetch documents
-        const documentsData = await getDelegateDocuments(user.id)
-        setDocuments(documentsData)
+        console.log("Fetching documents...")
+        const documentsResponse = await apiService.getDelegateDocuments(user.id)
+        console.log("Documents response:", JSON.stringify(documentsResponse, null, 2))
+        if (documentsResponse.success) {
+          setDocuments(documentsResponse.data)
+        } else {
+          console.log("No documents found or error in response")
+        }
       } catch (err) {
         console.error("Failed to fetch delegate data:", err)
         setError("Failed to load delegate data")
-
-        // Fallback to mock data for demonstration
-        setAssignment({
-          assignment_id: "assignment_123",
-          committee_name: "United Nations Security Council",
-          country_name: "France",
-          committee_id: "1",
-          topic: "Addressing Conflicts in the Middle East",
-        })
-
-        setScores([
-          { score_id: "1", category: "Speech", points: 8, date: "2023-10-15", notes: "Excellent opening speech" },
-          {
-            score_id: "2",
-            category: "Resolution",
-            points: 10,
-            date: "2023-10-16",
-            notes: "Primary sponsor of passed resolution",
-          },
-          { score_id: "3", category: "Diplomacy", points: 7, date: "2023-10-16", notes: "Good coalition building" },
-        ])
-
-        setAttendance([
-          { id: "1", committee_name: "UNSC", date: "2023-10-15", session: "Morning", status: "present" },
-          { id: "2", committee_name: "UNSC", date: "2023-10-15", session: "Afternoon", status: "present" },
-          { id: "3", committee_name: "UNSC", date: "2023-10-16", session: "Morning", status: "late" },
-          { id: "4", committee_name: "UNSC", date: "2023-10-16", session: "Afternoon", status: "present" },
-        ])
-
-        setDocuments([
-          {
-            document_id: "1",
-            title: "Position Paper",
-            type: "position_paper",
-            status: "approved",
-            submitted_date: "2023-10-01",
-            feedback: "Well researched",
-          },
-          {
-            document_id: "2",
-            title: "Draft Resolution on Peacekeeping",
-            type: "resolution",
-            status: "pending",
-            submitted_date: "2023-10-15",
-            feedback: null,
-          },
-        ])
       } finally {
         setLoading(false)
       }
@@ -147,6 +170,7 @@ export function DelegateDashboard() {
                   <Flag className="h-5 w-5 text-green-500" />
                   <div>
                     <p className="font-medium">Representing: {assignment.country_name}</p>
+                    <p className="text-sm text-gray-500">Position: {assignment.position || "Delegate"}</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full" asChild>
@@ -247,8 +271,10 @@ export function DelegateDashboard() {
                         <div className="col-span-2 text-center">
                           <Badge variant="outline">{score.points}</Badge>
                         </div>
-                        <div className="col-span-3 text-gray-500">{score.date}</div>
-                        <div className="col-span-3 text-gray-500">{score.notes || "-"}</div>
+                        <div className="col-span-3 text-gray-500">
+                          {score.timestamp ? new Date(score.timestamp).toLocaleDateString() : "-"}
+                        </div>
+                        <div className="col-span-3 text-gray-500">{score.comments || "-"}</div>
                       </div>
                     ))}
                   </div>
@@ -272,18 +298,21 @@ export function DelegateDashboard() {
               {attendance.length > 0 ? (
                 <div className="rounded-md border">
                   <div className="grid grid-cols-12 border-b bg-muted/50 px-4 py-2 text-sm font-medium">
-                    <div className="col-span-3">Date</div>
-                    <div className="col-span-3">Committee</div>
-                    <div className="col-span-3">Session</div>
-                    <div className="col-span-3">Status</div>
+                    <div className="col-span-4">Date</div>
+                    <div className="col-span-4">Committee</div>
+                    <div className="col-span-4">Status</div>
                   </div>
                   <div className="divide-y">
-                    {attendance.map((record) => (
-                      <div key={record.id} className="grid grid-cols-12 px-4 py-3 text-sm">
-                        <div className="col-span-3">{record.date}</div>
-                        <div className="col-span-3">{record.committee_name}</div>
-                        <div className="col-span-3">{record.session}</div>
-                        <div className="col-span-3">
+                    {attendance.map((record, idx) => (
+                      <div
+                        key={record.id || `${record.committee_name}-${record.date}-${idx}`}
+                        className="grid grid-cols-12 px-4 py-3 text-sm"
+                      >
+                        <div className="col-span-4">
+                          {record.date ? new Date(record.date).toLocaleDateString() : "-"}
+                        </div>
+                        <div className="col-span-4">{record.committee_name}</div>
+                        <div className="col-span-4">
                           {record.status === "present" ? (
                             <span className="inline-flex items-center text-green-600">
                               <CheckCircle className="mr-1 h-4 w-4" />
@@ -327,8 +356,7 @@ export function DelegateDashboard() {
                     <div className="col-span-4">Title</div>
                     <div className="col-span-2">Type</div>
                     <div className="col-span-2">Status</div>
-                    <div className="col-span-2">Submitted</div>
-                    <div className="col-span-2">Actions</div>
+                    <div className="col-span-4">Feedback</div>
                   </div>
                   <div className="divide-y">
                     {documents.map((doc) => (
@@ -349,12 +377,7 @@ export function DelegateDashboard() {
                             {doc.status}
                           </Badge>
                         </div>
-                        <div className="col-span-2 text-gray-500">{doc.submitted_date}</div>
-                        <div className="col-span-2">
-                          <Button variant="ghost" size="icon">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <div className="col-span-4 text-gray-500">{doc.feedback || "-"}</div>
                       </div>
                     ))}
                   </div>

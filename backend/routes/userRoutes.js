@@ -9,6 +9,9 @@ router.post('/register', userController.registerUser);
 // Login user
 router.post('/login', userController.loginUser);
 
+// Get all users
+router.get('/all', userController.getAllUsers);
+
 // Get user by ID
 router.get('/:id', userController.getCurrentUser);
 

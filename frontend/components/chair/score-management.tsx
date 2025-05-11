@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,64 +8,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Plus } from "lucide-react"
+import { AlertCircle, Plus, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { apiService } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 
 interface ScoreManagementProps {
   committeeId: string
+  scores: any[]
+  delegates: any[]
 }
 
-export function ScoreManagement({ committeeId }: ScoreManagementProps) {
-  const [delegates] = useState([
-    { id: "1", name: "John Smith", country: "France" },
-    { id: "2", name: "Emma Johnson", country: "Germany" },
-    { id: "3", name: "Michael Brown", country: "Japan" },
-    { id: "4", name: "Sophia Garcia", country: "Brazil" },
-    { id: "5", name: "William Davis", country: "India" },
-  ])
+export function ScoreManagement({ committeeId, scores: initialScores, delegates }: ScoreManagementProps) {
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const { toast } = useToast()
+  const { user } = useAuth()
+  const [scores, setScores] = useState<any[]>(initialScores || [])
 
-  const [scores] = useState([
-    {
-      id: "1",
-      delegate_id: "1",
-      delegate_name: "John Smith",
-      country: "France",
-      category: "Speech",
-      points: 8,
-      date: "2023-10-15",
-      notes: "Excellent opening speech",
-    },
-    {
-      id: "2",
-      delegate_id: "1",
-      delegate_name: "John Smith",
-      country: "France",
-      category: "Resolution",
-      points: 10,
-      date: "2023-10-16",
-      notes: "Primary sponsor of passed resolution",
-    },
-    {
-      id: "3",
-      delegate_id: "2",
-      delegate_name: "Emma Johnson",
-      country: "Germany",
-      category: "Diplomacy",
-      points: 7,
-      date: "2023-10-16",
-      notes: "Good coalition building",
-    },
-    {
-      id: "4",
-      delegate_id: "3",
-      delegate_name: "Michael Brown",
-      country: "Japan",
-      category: "Speech",
-      points: 6,
-      date: "2023-10-15",
-      notes: "Solid arguments but could improve delivery",
-    },
-  ])
+  // Normalize delegates for consistent data structure
+  const normalizedDelegates = delegates.map((d) => ({
+    id: d.delegate_id || d.id,
+    name: d.name || d.delegate_name || "",
+    country: d.country || d.country_name || "",
+  }))
 
   const [formData, setFormData] = useState({
     delegate_id: "",
@@ -76,20 +40,67 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
     notes: "",
   })
 
-  const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
+  // Fetch scores when component mounts or when committeeId changes
+  useEffect(() => {
+    const fetchScores = async () => {
+      try {
+        const response = await apiService.getScoresByCommittee(committeeId)
+        if (response.success) {
+          setScores(response.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch scores:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load scores. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (!initialScores || initialScores.length === 0) {
+      fetchScores()
+    } else {
+      setScores(initialScores)
+      setLoading(false)
+    }
+  }, [committeeId, initialScores, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
 
-    try {
-      // In a real app, this would call the API
-      // await addScore(committeeId, formData)
-
+    if (!formData.delegate_id || !formData.category || !formData.points) {
       toast({
-        title: "Score added",
-        description: "The score has been added successfully.",
+        title: "Validation Error",
+        description: "Please fill all required fields.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const response = await apiService.addScore({
+        committee_id: committeeId,
+        delegate_id: formData.delegate_id,
+        chair_id: user?.id,
+        category: formData.category,
+        points: parseFloat(formData.points),
+        comments: formData.notes
+      })
+
+      if (response.success) {
+        // Refresh the scores list
+        const updatedScores = await apiService.getScoresByCommittee(committeeId)
+        if (updatedScores.success) {
+          setScores(updatedScores.data)
+        }
+
+        toast({
+          title: "Success",
+          description: "Score added successfully.",
       })
 
       // Reset form
@@ -99,26 +110,29 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
         points: "",
         notes: "",
       })
+      }
     } catch (error) {
       console.error("Add score error:", error)
       toast({
         variant: "destructive",
-        title: "Failed to add score",
-        description: "There was an error adding the score. Please try again.",
+        title: "Error",
+        description: "Failed to add score. Please try again.",
       })
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Note</AlertTitle>
-        <AlertDescription>[Sample Data] Showing example score management interface.</AlertDescription>
-      </Alert>
-
       <Card>
         <CardHeader>
           <CardTitle>Add New Score</CardTitle>
@@ -139,7 +153,7 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
                     <SelectValue placeholder="Select delegate" />
                   </SelectTrigger>
                   <SelectContent>
-                    {delegates.map((delegate) => (
+                    {normalizedDelegates.map((delegate) => (
                       <SelectItem key={delegate.id} value={delegate.id}>
                         {delegate.name} ({delegate.country})
                       </SelectItem>
@@ -160,11 +174,15 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Speech">Speech</SelectItem>
-                    <SelectItem value="Resolution">Resolution</SelectItem>
-                    <SelectItem value="Diplomacy">Diplomacy</SelectItem>
-                    <SelectItem value="Position Paper">Position Paper</SelectItem>
-                    <SelectItem value="Participation">Participation</SelectItem>
+                    <SelectItem value="speech">Speech</SelectItem>
+                    <SelectItem value="motion">Motion</SelectItem>
+                    <SelectItem value="resolution">Resolution</SelectItem>
+                    <SelectItem value="diplomacy">Diplomacy</SelectItem>
+                    <SelectItem value="position_paper">Position Paper</SelectItem>
+                    <SelectItem value="working_paper">Working Paper</SelectItem>
+                    <SelectItem value="draft_resolution">Draft Resolution</SelectItem>
+                    <SelectItem value="amendment">Amendment</SelectItem>
+                    <SelectItem value="overall">Overall</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -173,13 +191,14 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label htmlFor="points" className="text-sm font-medium">
-                  Points (1-10)
+                  Points (0-10)
                 </label>
                 <Input
                   id="points"
                   type="number"
-                  min="1"
+                  min="0"
                   max="10"
+                  step="0.5"
                   value={formData.points}
                   onChange={(e) => setFormData({ ...formData, points: e.target.value })}
                   placeholder="Enter points"
@@ -195,14 +214,14 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Add notes about this score"
-                  rows={1}
+                  rows={3}
                 />
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              {loading ? "Adding Score..." : "Add Score"}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              {submitting ? "Adding Score..." : "Add Score"}
             </Button>
           </form>
         </CardContent>
@@ -217,27 +236,31 @@ export function ScoreManagement({ committeeId }: ScoreManagementProps) {
           <div className="rounded-md border">
             <div className="grid grid-cols-12 border-b bg-muted/50 px-4 py-2 text-sm font-medium">
               <div className="col-span-3">Delegate</div>
-              <div className="col-span-2">Country</div>
               <div className="col-span-2">Category</div>
               <div className="col-span-1">Points</div>
               <div className="col-span-2">Date</div>
-              <div className="col-span-2">Notes</div>
+              <div className="col-span-4">Notes</div>
             </div>
             <div className="divide-y">
-              {scores.map((score) => (
-                <div key={score.id} className="grid grid-cols-12 px-4 py-3 text-sm">
+              {scores.length > 0 ? (
+                scores.map((score) => (
+                <div key={score.score_id} className="grid grid-cols-12 px-4 py-3 text-sm">
                   <div className="col-span-3 font-medium">{score.delegate_name}</div>
-                  <div className="col-span-2">{score.country}</div>
-                  <div className="col-span-2">{score.category}</div>
+                    <div className="col-span-2 capitalize">{score.category}</div>
                   <div className="col-span-1">
                     <Badge variant="outline">{score.points}</Badge>
+                    </div>
+                    <div className="col-span-2 text-gray-500">
+                      {score.timestamp ? new Date(score.timestamp).toLocaleDateString() : "-"}
+                    </div>
+                    <div className="col-span-4 truncate text-gray-500" title={score.comments}>
+                      {score.comments || "-"}
+                    </div>
                   </div>
-                  <div className="col-span-2 text-gray-500">{score.date}</div>
-                  <div className="col-span-2 truncate text-gray-500" title={score.notes}>
-                    {score.notes}
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="px-4 py-6 text-center text-sm text-gray-500">No scores found</div>
+              )}
             </div>
           </div>
         </CardContent>

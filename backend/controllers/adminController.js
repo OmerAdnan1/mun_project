@@ -249,3 +249,57 @@ exports.assignChairToCommittee = async (req, res) => {
       });
     }
   };
+
+// Get all users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await Admin.getAllUsers();
+    res.status(200).json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve users',
+      error: error.message
+    });
+  }
+};
+
+// Get all delegates
+exports.getAllDelegates = async (req, res) => {
+  try {
+    const delegates = await Admin.getAllDelegates();
+    res.status(200).json({
+      success: true,
+      data: delegates
+    });
+  } catch (error) {
+    console.error('Get all delegates error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve delegates',
+      error: error.message
+    });
+  }
+};
+
+// Get all delegate assignments
+exports.getAllDelegateAssignments = async (req, res) => {
+  try {
+    const assignments = await Admin.getAllDelegateAssignments();
+    res.status(200).json({
+      success: true,
+      data: assignments
+    });
+  } catch (error) {
+    console.error('Get all delegate assignments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve delegate assignments',
+      error: error.message
+    });
+  }
+};

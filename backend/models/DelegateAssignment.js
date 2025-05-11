@@ -118,6 +118,18 @@ class DelegateAssignment {
       throw error;
     }
   }
+
+  // Get all delegate assignments with related details
+  static async getAll() {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request().execute('sp_GetAllDelegateAssignments');
+      return result.recordset;
+    } catch (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = DelegateAssignment;

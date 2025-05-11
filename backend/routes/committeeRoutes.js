@@ -9,8 +9,15 @@ router.post('/', committeeController.createCommittee);
 // Get all committees
 router.get('/', committeeController.getCommittees);
 
+// Get committees by chair ID
+router.get('/chair/:chairId', committeeController.getCommitteesByChair);
+// its thunderclient request would be http://localhost:5000/api/committees/chair/1
+
 // Get committee by ID
 router.get('/:id', committeeController.getCommitteeById);
+
+// Get committee overview by ID
+router.get('/overview/:id', committeeController.getCommitteeOverview);
 
 // Update committee
 router.put('/:id', committeeController.updateCommittee);

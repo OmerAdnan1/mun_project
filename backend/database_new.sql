@@ -829,8 +829,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT *
-    FROM dbo.Countries
+    SELECT *,
+    (SELECT COUNT(*) FROM dbo.DelegateAssignments da WHERE da.country_id = c.country_id) AS delegate_count
+    FROM dbo.Countries c
     WHERE 
         (@importance_min IS NULL OR importance >= @importance_min) AND
         (@importance_max IS NULL OR importance <= @importance_max) AND
@@ -2824,7 +2825,6 @@ delete from Countries
 
 GO
 
-select * from 
 
 -- Example: Allocate countries for committee #1
 EXEC dbo.AllocateCountriesByExperience @CommitteeId = 1;
@@ -4700,6 +4700,56 @@ GO
 -- 72. sp_GenerateAwards: Generates awards for top delegates in a committee.
 -- 73. sp_ChangeDocumentStatus: Changes the status of a document.
 -- 74. sp_ChangeEventStatus: Changes the status of an event.
+-- 75. sp_GetAllDelegateAssignments: Retrieves all delegate assignments with related details.
+
+create or alter sp_GetAvailableCountries
+as
+    @committee_id INT,
+    @block_id INT = NULL
+as
+begin
+    set nocount on;
+
+    select 
+        c.country_id,
+        c.name
+    from 
+        dbo.Countries c
+    left join dbo.DelegateAssignments da on c.country_id = da.country_id
+    where 
+        (da.committee_id is null or da.committee_id <> @committee_id)
+        and (da.block_id is null or da.block_id <> @block_id);
+end;
+
+create or alter procedure sp_GetAllDelegates
+as
+begin
+    set nocount on;
+
+    select 
+        u.user_id,
+        u.full_name,
+        u.email,
+        u.phone,
+        d.experience_level,
+        d.emergency_contact,
+        da.assignment_id,
+        da.committee_id,
+        c.name as committee_name,
+        c.topic as committee_topic,
+        da.country_id,
+        co.name as country_name,
+        da.block_id,
+        b.name as block_name
+    from 
+        dbo.Users u
+    join dbo.Delegates d on u.user_id = d.user_id
+    left join dbo.DelegateAssignments da on d.user_id = da.delegate_id
+    left join dbo.Committees c on da.committee_id = c.committee_id
+    left join dbo.Countries co on da.country_id = co.country_id
+    left join dbo.Blocks b on da.block_id = b.block_id;
+end;
+go
 
 -- VIEWS
 -- 1. vw_UserDetails: Provides detailed information about users.
@@ -4737,3 +4787,141 @@ GO
 -- 16. trg_UserAudit: Logs changes to user records.
 
 PRINT 'Database setup completed successfully.'
+go 
+
+-- sp_GetCommitteesByChair - Get all committees assigned to a chair
+CREATE OR ALTER PROCEDURE sp_GetCommitteesByChair
+    @chair_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        c.committee_id AS id,
+        c.name,
+        c.topic,
+        c.difficulty,
+        c.capacity,
+        COUNT(DISTINCT da.delegate_id) AS delegate_count,
+        CONVERT(VARCHAR(20), c.start_date, 107) + ' ' + 
+        CONVERT(VARCHAR(5), c.start_date, 108) AS next_session,
+        (SELECT COUNT(*) FROM dbo.Documents d 
+         WHERE d.committee_id = c.committee_id 
+         AND d.status = 'pending') AS pending_documents
+    FROM 
+        dbo.Committees c
+    LEFT JOIN dbo.DelegateAssignments da ON c.committee_id = da.committee_id
+    WHERE 
+        c.chair_id = @chair_id
+    GROUP BY 
+        c.committee_id, c.name, c.topic, c.difficulty, c.capacity, c.start_date;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE sp_GetCommitteeFullOverview
+    @committee_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- 1. Committee Details
+    SELECT c.*, u.full_name AS chair_name, u.email AS chair_email
+    FROM Committees c
+    JOIN Users u ON c.chair_id = u.user_id
+    WHERE c.committee_id = @committee_id;
+
+    -- 2. Delegates (with name, country, email, position paper, status)
+    SELECT 
+        da.delegate_id,
+        u.full_name AS delegate_name,
+        u.email,
+        co.name AS country_name,
+        d.experience_level,
+        -- You may need to join with Documents for position paper status if needed
+        'active' AS status
+    FROM DelegateAssignments da
+    JOIN Users u ON da.delegate_id = u.user_id
+    JOIN Countries co ON da.country_id = co.country_id
+    JOIN Delegates d ON da.delegate_id = d.user_id
+    WHERE da.committee_id = @committee_id;
+
+    -- 3. Scores (Delegate, Category, Points, Date, Notes)
+    SELECT 
+        s.score_id,
+        s.delegate_id,
+        u.full_name AS delegate_name,
+        s.category,
+        s.points,
+        s.timestamp,
+        s.comments
+    FROM Scores s
+    JOIN Users u ON s.delegate_id = u.user_id
+    JOIN DelegateAssignments da ON s.delegate_id = da.delegate_id
+    WHERE da.committee_id = @committee_id;
+
+    -- 4. Attendance (Delegate, Country, Status)
+    SELECT 
+        a.user_id AS delegate_id,
+        u.full_name AS delegate_name,
+        co.name AS country_name,
+        a.status,
+        a.date
+    FROM Attendance a
+    JOIN Users u ON a.user_id = u.user_id
+    JOIN DelegateAssignments da ON a.user_id = da.delegate_id AND a.committee_id = da.committee_id
+    JOIN Countries co ON da.country_id = co.country_id
+    WHERE a.committee_id = @committee_id;
+
+    -- 5. Documents (Title, Delegate, Status)
+    SELECT 
+        d.document_id,
+        d.title,
+        d.status,
+        d.delegate_id,
+        u.full_name AS delegate_name
+    FROM Documents d
+    JOIN Users u ON d.delegate_id = u.user_id
+    JOIN DelegateAssignments da ON d.delegate_id = da.delegate_id
+    WHERE da.committee_id = @committee_id;
+END
+GO
+
+-- Stored procedure to get all delegate assignments with related details
+CREATE OR ALTER PROCEDURE sp_GetAllDelegateAssignments
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        da.assignment_id,
+        da.delegate_id,
+        da.committee_id,
+        da.country_id,
+        da.assigned_date,
+        da.status,
+        u.full_name as delegate_name,
+        c.name as committee_name,
+        co.name as country_name,
+        co.flag_url,
+        b.name as block_name
+    FROM DelegateAssignments da
+    JOIN Users u ON da.delegate_id = u.user_id
+    JOIN Committees c ON da.committee_id = c.committee_id
+    JOIN Countries co ON da.country_id = co.country_id
+    LEFT JOIN Blocks b ON da.block_id = b.block_id
+    WHERE da.is_deleted = 0
+    ORDER BY da.assigned_date DESC;
+END;
+GO
+
+-- Stored procedure to get all users
+CREATE OR ALTER PROCEDURE sp_GetAllUsers
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT user_id, email, full_name, role, phone, created_at,  'active' as is_active 
+    FROM Users
+    ORDER BY created_at DESC
+END;
+GO

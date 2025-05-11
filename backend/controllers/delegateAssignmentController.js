@@ -1,4 +1,3 @@
-// controllers/delegateAssignmentController.js
 const DelegateAssignment = require('../models/DelegateAssignment');
 
 // Assign delegate to committee
@@ -30,7 +29,7 @@ exports.assignDelegateToCommittee = async (req, res) => {
   }
 };
 
-// Get all delegate assignments
+// Get delegate assignments
 exports.getDelegateAssignments = async (req, res) => {
   try {
     const filters = {
@@ -52,6 +51,24 @@ exports.getDelegateAssignments = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve delegate assignments',
+      error: error.message
+    });
+  }
+};
+
+// Get all assignments (for admin view)
+exports.getAllAssignments = async (req, res) => {
+  try {
+    const assignments = await DelegateAssignment.getAll();
+    res.status(200).json({
+      success: true,
+      data: assignments
+    });
+  } catch (error) {
+    console.error('Get all assignments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve all assignments',
       error: error.message
     });
   }

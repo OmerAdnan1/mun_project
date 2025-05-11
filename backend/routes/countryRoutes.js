@@ -8,6 +8,9 @@ router.post('/', countryController.createCountry);
 // Get all countries
 router.get('/', countryController.getAllCountries);
 
+// Get available countries for a committee (and optionally block)
+router.get('/available', countryController.getAvailableCountries);
+
 // Get country by ID
 router.get('/:id', countryController.getCountryById);
 

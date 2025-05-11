@@ -85,6 +85,20 @@ class Country {
       throw error;
     }
   }
+
+  // Get available countries
+  static async getAvailableCountries(committeeId, blockId = null) {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+      request.input('committee_id', sql.Int, committeeId);
+      if (blockId !== null) request.input('block_id', sql.Int, blockId);
+      const result = await request.execute('sp_GetAvailableCountries');
+      return result.recordset;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = Country;

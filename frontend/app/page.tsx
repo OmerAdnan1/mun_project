@@ -168,7 +168,7 @@ export default function Home() {
                 <p className="mt-4 font-medium">
                   Sincerely,
                   <br />
-                  Jane Doe
+                  Yaman Tariq
                   <br />
                   Secretary General
                 </p>

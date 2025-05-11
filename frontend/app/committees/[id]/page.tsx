@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { use, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,72 +11,34 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCommitteeById } from "@/lib/api"
 
-export default function CommitteeDetailPage({ params }: { params: { id: string } }) {
+export default function CommitteeDetailPage({ params }: { params: any }) {
+  const { id } = use(params as { id: string })
   const [committee, setCommittee] = useState<any>(null)
+  const [delegates, setDelegates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchCommittee = async () => {
       try {
-        // Using a try-catch to handle any potential errors
-        const data = await getCommitteeById(params.id)
-
-        // If we got data back, use it
-        if (data) {
-          setCommittee(data)
+        const apiData = await getCommitteeById(id)
+        console.log('Committee API data:', apiData)
+        if (apiData && apiData.success && apiData.data) {
+          // Use both committee and delegates from API
+          setCommittee(apiData.data.committee)
+          setDelegates(apiData.data.delegates || [])
         } else {
-          // If no data, show an error
           setError("Failed to load committee details")
-          // We'll still set mock data for demonstration
-          setCommittee({
-            committee_id: params.id,
-            name: "United Nations Security Council",
-            description:
-              "The Security Council has primary responsibility for the maintenance of international peace and security. It takes the lead in determining the existence of a threat to the peace or act of aggression.",
-            topic: "Addressing Conflicts in the Middle East",
-            difficulty: "Advanced",
-            capacity: 15,
-            current_delegate_count: 10,
-            chair_name: "Alex Johnson",
-            background_guide_url: "#",
-            schedule: [
-              { day: "Friday", time: "9:00 AM - 12:00 PM", activity: "Opening Session" },
-              { day: "Friday", time: "2:00 PM - 5:00 PM", activity: "Debate Session 1" },
-              { day: "Saturday", time: "9:00 AM - 12:00 PM", activity: "Debate Session 2" },
-              { day: "Saturday", time: "2:00 PM - 5:00 PM", activity: "Voting Procedures" },
-            ],
-          })
         }
       } catch (err) {
-        console.error("Failed to fetch committee:", err)
+        console.error('Error fetching committee:', err)
         setError("Failed to load committee details")
-        // Fallback to mock data for demonstration
-        setCommittee({
-          committee_id: params.id,
-          name: "United Nations Security Council",
-          description:
-            "The Security Council has primary responsibility for the maintenance of international peace and security. It takes the lead in determining the existence of a threat to the peace or act of aggression.",
-          topic: "Addressing Conflicts in the Middle East",
-          difficulty: "Advanced",
-          capacity: 15,
-          current_delegate_count: 10,
-          chair_name: "Alex Johnson",
-          background_guide_url: "#",
-          schedule: [
-            { day: "Friday", time: "9:00 AM - 12:00 PM", activity: "Opening Session" },
-            { day: "Friday", time: "2:00 PM - 5:00 PM", activity: "Debate Session 1" },
-            { day: "Saturday", time: "9:00 AM - 12:00 PM", activity: "Debate Session 2" },
-            { day: "Saturday", time: "2:00 PM - 5:00 PM", activity: "Voting Procedures" },
-          ],
-        })
       } finally {
         setLoading(false)
       }
     }
-
     fetchCommittee()
-  }, [params.id])
+  }, [id])
 
   if (loading) {
     return (
@@ -107,29 +69,17 @@ export default function CommitteeDetailPage({ params }: { params: { id: string }
     )
   }
 
-  const seatsAvailable = committee.capacity - committee.current_delegate_count
+  const seatsAvailable = Number(committee.capacity ?? 0) - Number(delegates.length)
 
   return (
     <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
-        {error && (
-          <Alert className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Note</AlertTitle>
-            <AlertDescription>[Sample Data] Showing example committee details.</AlertDescription>
-          </Alert>
-        )}
-
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">{committee.name}</h1>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                {committee.difficulty}
-              </Badge>
-              <Badge variant="outline" className="bg-green-50 text-green-700">
-                {seatsAvailable} Seats Available
-              </Badge>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700">{committee.difficulty}</Badge>
+              <Badge variant="outline" className="bg-green-50 text-green-700">{seatsAvailable} Seats Available</Badge>
             </div>
           </div>
           <Link href="/register">
@@ -172,16 +122,16 @@ export default function CommitteeDetailPage({ params }: { params: { id: string }
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-700">Registered Delegates:</span>
-                  <span className="font-medium">{committee.current_delegate_count}</span>
+                  <span className="font-medium">{delegates.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-700">Seats Available:</span>
-                  <span className="font-medium text-green-600">{seatsAvailable}</span>
+                  <span className="font-medium text-green-600">{isNaN(seatsAvailable) ? "N/A" : seatsAvailable}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-gray-200">
                   <div
                     className="h-full bg-blue-600"
-                    style={{ width: `${(committee.current_delegate_count / committee.capacity) * 100}%` }}
+                    style={{ width: `${(delegates.length / committee.capacity) * 100}%` }}
                   ></div>
                 </div>
               </div>
@@ -221,7 +171,7 @@ export default function CommitteeDetailPage({ params }: { params: { id: string }
           <Tabs defaultValue="description">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="description">Description</TabsTrigger>
-              <TabsTrigger value="schedule">Schedule</TabsTrigger>
+              <TabsTrigger value="delegates">Delegates</TabsTrigger>
               <TabsTrigger value="countries">Countries</TabsTrigger>
             </TabsList>
             <TabsContent value="description" className="mt-6">
@@ -229,29 +179,40 @@ export default function CommitteeDetailPage({ params }: { params: { id: string }
                 <CardContent className="pt-6">
                   <p className="text-gray-700">{committee.description}</p>
                   <h3 className="mt-6 text-lg font-medium">Topic Overview</h3>
-                  <p className="mt-2 text-gray-700">
-                    {committee.topic} - This topic addresses critical international security concerns and requires
-                    delegates to navigate complex geopolitical relationships while working toward sustainable peace
-                    solutions.
-                  </p>
+                  <p className="mt-2 text-gray-700">{committee.topic}</p>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="schedule" className="mt-6">
+            <TabsContent value="delegates" className="mt-6">
               <Card>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    {committee.schedule?.map((item: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex flex-col border-b border-gray-200 pb-4 last:border-0 sm:flex-row"
-                      >
-                        <div className="mb-2 w-full font-medium sm:mb-0 sm:w-1/3">
-                          {item.day}, {item.time}
-                        </div>
-                        <div className="w-full sm:w-2/3">{item.activity}</div>
-                      </div>
-                    )) || <p className="text-gray-500">Schedule information not available.</p>}
+                <CardHeader>
+                  <CardTitle>Delegates</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Delegate (Country)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {delegates.length > 0 ? (
+                          delegates.map((d) => (
+                            <tr key={d.delegate_id} className="border-b">
+                              <td className="px-4 py-2 whitespace-nowrap">
+                                {d.delegate_name}
+                                {d.country_name ? ` (${d.country_name})` : ""}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={1} className="px-4 py-4 text-center text-gray-500">No delegates registered yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </CardContent>
               </Card>
@@ -260,23 +221,7 @@ export default function CommitteeDetailPage({ params }: { params: { id: string }
               <Card>
                 <CardContent className="pt-6">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                    {[
-                      "United States",
-                      "Russia",
-                      "China",
-                      "United Kingdom",
-                      "France",
-                      "Germany",
-                      "Japan",
-                      "India",
-                      "Brazil",
-                      "South Africa",
-                      "Australia",
-                      "Canada",
-                      "Mexico",
-                      "Italy",
-                      "Spain",
-                    ].map((country) => (
+                    {[...new Set(delegates.map((d) => d.country_name))].map((country) => (
                       <Badge key={country} variant="outline" className="justify-center py-1.5">
                         {country}
                       </Badge>

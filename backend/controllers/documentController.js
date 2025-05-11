@@ -172,12 +172,7 @@ exports.getDocumentsByCommittee = async (req, res) => {
 // Get documents by delegate
 exports.getDocumentsByDelegate = async (req, res) => {
   try {
-    const filters = {
-      type: req.query.type,
-      status: req.query.status
-    };
-
-    const documents = await Document.getByDelegate(req.params.id, filters);
+    const documents = await Document.getByDelegate(parseInt(req.params.id));
 
     res.status(200).json({
       success: true,
@@ -186,15 +181,6 @@ exports.getDocumentsByDelegate = async (req, res) => {
     });
   } catch (error) {
     console.error('Get documents by delegate error:', error);
-    
-    if (error.message.includes('Delegate not found')) {
-      return res.status(404).json({
-        success: false,
-        message: 'Delegate not found',
-        error: error.message
-      });
-    }
-    
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve documents',

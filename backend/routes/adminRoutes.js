@@ -11,6 +11,14 @@ router.put('/:id', adminController.updateAdmin);
 // Delete admin
 router.delete('/:id', adminController.deleteAdmin);
 
+// Get all users
+router.get('/users/all', adminController.getAllUsers);
+
+// Get all delegates
+router.get('/delegates/all', adminController.getAllDelegates);
+
+// Get all delegate assignments
+router.get('/assignments/all', adminController.getAllDelegateAssignments);
 
 // Assign chair to committee
 router.post('/chair-assignment', adminController.assignChairToCommittee);
@@ -26,7 +34,6 @@ router.put('/documents/:id/status', adminController.changeDocumentStatus);
 
 // Change event status
 router.put('/events/:id/status', adminController.changeEventStatus);
-
 
 module.exports = router;
 

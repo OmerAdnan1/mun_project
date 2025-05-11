@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,12 +9,14 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { Calendar, Clock, FileText, Users } from "lucide-react"
+import { apiService } from "@/lib/api"
 
 interface CommitteeDetailsProps {
   committee: any
+  refreshCommittee?: () => void
 }
 
-export function CommitteeDetails({ committee }: CommitteeDetailsProps) {
+export function CommitteeDetails({ committee, refreshCommittee }: CommitteeDetailsProps) {
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: committee.name,
@@ -37,8 +38,7 @@ export function CommitteeDetails({ committee }: CommitteeDetailsProps) {
     setLoading(true)
 
     try {
-      // In a real app, this would call the API to update the committee
-      // await updateCommittee(committee.committee_id, formData)
+      await apiService.updateCommittee(committee.committee_id, formData)
 
       toast({
         title: "Committee updated",
@@ -46,6 +46,9 @@ export function CommitteeDetails({ committee }: CommitteeDetailsProps) {
       })
 
       setEditing(false)
+      if (typeof refreshCommittee === 'function') {
+        refreshCommittee()
+      }
     } catch (error) {
       console.error("Update error:", error)
       toast({

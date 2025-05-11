@@ -10,37 +10,64 @@ import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getCommittees } from "@/lib/api"
 
-export function CommitteesList() {
-  const [committees, setCommittees] = useState<any[]>([])
+// Define the expected structure of committee data
+interface Committee {
+  committee_id: string;
+  name: string;
+  topic: string;
+  difficulty: string;
+  capacity: number;
+  current_delegate_count: number;
+  chair_name: string;
+}
+
+interface CommitteesListProps {
+  filters?: {
+    difficulty?: string;
+    chair_id?: string;
+    search_term?: string;
+  };
+}
+
+export function CommitteesList({ filters }: CommitteesListProps) {
+  const [committees, setCommittees] = useState<Committee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchCommittees = async () => {
       try {
-        // Using a try-catch to handle any potential errors
-        const data = await getCommittees()
-
-        // If we got data back, use it
-        if (data && Array.isArray(data)) {
-          setCommittees(data)
-        } else {
-          // If no data or invalid data, show an error
-          setError("Unable to load committees data")
-          // Set empty array to avoid rendering issues
-          setCommittees([])
+        const data: any = await getCommittees(filters);
+        // Use data.data if present (API returns { success, count, data })
+        const committeesArray = Array.isArray(data) ? data : data?.data;
+        if (!Array.isArray(committeesArray)) {
+          setCommittees([]);
+          setError("No committees data found");
+          return;
         }
+        // Log the actual data for debugging
+        console.log("Committees API data:", committeesArray);
+        const normalizedData = committeesArray.map((committee: Committee) => ({
+          committee_id: committee.committee_id,
+          name: committee.name,
+          topic: committee.topic,
+          difficulty: committee.difficulty,
+          capacity: committee.capacity,
+          current_delegate_count: committee.current_delegate_count,
+          chair_name: committee.chair_name,
+        }));
+        setCommittees(normalizedData);
       } catch (err) {
-        console.error("Failed to fetch committees:", err)
-        setError("Failed to load committees")
-        setCommittees([])
+        console.error("Failed to fetch committees:", err);
+        setError("Failed to load committees");
+        setCommittees([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchCommittees()
-  }, [])
+    fetchCommittees();
+  }, [filters])
 
   if (loading) {
     return (

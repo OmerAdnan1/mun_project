@@ -52,6 +52,19 @@ class User {
     }
   }
 
+  // Get all users
+  static async getAll() {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+      const result = await request.execute('sp_GetAllUsers');
+      return result.recordset;
+    } catch (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+  }
+
   // Update user
   static async update(userId, userData) {
     try {

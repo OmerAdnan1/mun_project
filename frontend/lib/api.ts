@@ -2,13 +2,21 @@
 // This file contains functions to interact with the backend API
 // For demo purposes, most functions will return mock data when the API is not available
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
 // Types
 interface ApiResponse<T> {
   success: boolean;
-  data: T;
   message?: string;
+  data: T;
+}
+
+interface LoginResponse {
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  phone?: string;
 }
 
 interface User {
@@ -30,9 +38,58 @@ interface Committee {
   // Add other committee fields
 }
 
+interface DelegateAssignment {
+  assignment_id: string;
+  delegate_id: string;
+  committee_id: string;
+  country_id: string;
+  committee_name: string;
+  country_name: string;
+  topic: string;
+  position: string;
+}
+
+interface Score {
+  score_id: string;
+  delegate_id: string;
+  committee_id: string;
+  category: string;
+  points: number;
+  timestamp: string;
+  comments: string;
+  event_type?: string;
+  event_description?: string;
+  document_title?: string;
+  document_type?: string;
+  chair_name: string;
+}
+
+interface Attendance {
+  id: string;
+  delegate_id: string;
+  committee_id: string;
+  date: string;
+  status: string;
+  committee_name: string;
+  position: string;
+}
+
+interface Document {
+  document_id: string;
+  delegate_id: string;
+  committee_id: string;
+  title: string;
+  type: string;
+  status: string;
+  submitted_date: string;
+  feedback: string | null;
+}
+
+
+
 // ... Add other interfaces as needed
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 class ApiService {
   private api: AxiosInstance;
@@ -51,7 +108,7 @@ class ApiService {
   private setupInterceptors() {
     // Request interceptor
     this.api.interceptors.request.use(
-      (config: AxiosRequestConfig) => {
+      (config: InternalAxiosRequestConfig) => {
         const token = localStorage.getItem('token');
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -75,13 +132,19 @@ class ApiService {
   }
 
   // User APIs
-  async login(email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> {
+  async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
     const response = await this.api.post('/users/login', { email, password });
     return response.data;
   }
 
   async register(userData: Partial<User>): Promise<ApiResponse<User>> {
     const response = await this.api.post('/users/register', userData);
+    return response.data;
+  }
+
+  // Update user info
+  async updateUser(id: string, data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/users/${id}`, data);
     return response.data;
   }
 
@@ -103,8 +166,13 @@ class ApiService {
   }
 
   async getCommitteeById(id: string): Promise<ApiResponse<Committee>> {
-    const response = await this.api.get(`/committees/${id}`);
-    return response.data;
+    try {
+      const response = await this.api.get(`/committees/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch committee with ID ${id}:`, error);
+      throw error;
+    }
   }
 
   // Document APIs
@@ -133,15 +201,47 @@ class ApiService {
     return response.data;
   }
 
-  // Score APIs
-  async getScores(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/scores');
+  // Get attendance for a committee on a specific date
+  async getAttendanceByDate(committeeId: string, date: string): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get(`/attendances/committee/${committeeId}/date/${date}`)
     return response.data;
   }
 
-  async addScore(data: any): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/scores', data);
+  // Score APIs
+  async getScores(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/api/scores');
     return response.data;
+  }
+
+  async addScore(data: any): Promise<any> {
+    try {
+      const response = await this.api.post('/scores', {
+        delegate_id: parseInt(data.delegate_id),
+        committee_id: parseInt(data.committee_id),
+        category: data.category,
+        points: parseFloat(data.points),
+        chair_id: parseInt(data.chair_id || this.getCurrentUserId()),
+        comments: data.comments || "no comments"
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding score:', error);
+      throw error;
+    }
+  }
+
+  async getScoresByCommittee(committeeId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.api.get(`/scores/committee/${committeeId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch scores for committee ${committeeId}:`, error);
+      return {
+        success: true,
+        message: "Failed to fetch scores, using fallback data",
+        data: []
+      };
+    }
   }
 
   // Event APIs
@@ -167,14 +267,25 @@ class ApiService {
   }
 
   // Delegate Assignment APIs
-  async getDelegateAssignments(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/delegate-assignments');
+  async getDelegateAssignments(delegateId: string): Promise<ApiResponse<DelegateAssignment[]>> {
+    const response = await this.api.get(`/delegate-assignments?delegateId=${parseInt(delegateId)}`);
     return response.data;
   }
 
   async assignDelegate(data: any): Promise<ApiResponse<any>> {
     const response = await this.api.post('/delegate-assignments', data);
     return response.data;
+  }
+
+  async getAllDelegateAssignments() {
+    try {
+      const apiData = await apiRequest("/delegate-assignments/all")
+      if (apiData) return apiData
+      return { success: false, message: "No response from server", data: [] }
+    } catch (error) {
+      console.error("Get all delegate assignments API error:", error)
+      return { success: false, message: "Failed to fetch delegate assignments", data: [] }
+    }
   }
 
   // Country APIs
@@ -193,6 +304,101 @@ class ApiService {
   async getAdmins(): Promise<ApiResponse<any[]>> {
     const response = await this.api.get('/admins');
     return response.data;
+  }
+
+  async getDelegateScores(delegateId: string): Promise<ApiResponse<Score[]>> {
+    const response = await this.api.get(`/scores/delegate/${parseInt(delegateId)}`);
+    return response.data;
+  }
+
+  async getDelegateAttendance(delegateId: string): Promise<ApiResponse<Attendance[]>> {
+    const response = await this.api.get(`/attendances/delegate/${parseInt(delegateId)}`);
+    return response.data;
+  }
+
+  async getDelegateDocuments(delegateId: string): Promise<ApiResponse<Document[]>> {
+    const response = await this.api.get(`/documents/delegate/${parseInt(delegateId)}`);
+    return response.data;
+  }
+
+  // Chair APIs
+  async getChairById(id: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.get(`/chairs/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch chair with ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getChairCommittees(chairId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.get(`/committees?chair_id=${chairId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch committees for chair ${chairId}:`, error);
+      // Return mock data for demonstration purposes
+      return {
+        success: true,
+        data: [
+          {
+            id: "1",
+            name: "United Nations Security Council",
+            topic: "Addressing Conflicts in the Middle East",
+            delegate_count: 15,
+            next_session: "Today, 9:00 AM",
+            pending_documents: 3,
+          },
+          {
+            id: "2",
+            name: "World Health Organization",
+            topic: "Global Pandemic Response",
+            delegate_count: 20,
+            next_session: "Tomorrow, 10:00 AM",
+            pending_documents: 5,
+          },
+        ],
+      };
+    }
+  }
+
+  async updateChairInfo(id: string, data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/chairs/${id}`, data);
+    return response.data;
+  }
+
+  // Admin APIs
+  async getAdminById(id: string): Promise<ApiResponse<any>> {
+    const response = await this.api.get(`/admins/${id}`);
+    return response.data;
+  }
+
+  async updateAdminInfo(id: string, data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/admins/${id}`, data);
+    return response.data;
+  }
+
+  // Delegate APIs
+  async updateDelegateInfo(id: string, data: any): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/delegates/${id}`, data);
+    return response.data;
+  }
+
+  // Helper method to get current user ID
+  private getCurrentUserId(): string | null {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          return user.id;
+        } catch (e) {
+          console.error('Error parsing user from localStorage:', e);
+        }
+      }
+    }
+    return null;
   }
 }
 
@@ -217,34 +423,23 @@ async function apiRequest(endpoint: string, options: RequestInit = {}) {
   }
 
   try {
-    // For demo purposes, we'll simulate API requests without actually making them
-    // This prevents errors when running in development without a backend
-    console.log(`[Mock API] Request to ${endpoint}`)
-
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Instead of making a real API request, we'll throw an error to trigger the mock data fallback
-    throw new Error("Using mock data for demonstration")
-
-    // In a real app, you would uncomment the following code:
-    /*
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     })
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`)
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(
+        errorData.message || `API request failed: ${response.status} ${response.statusText}`
+      )
     }
 
     const data = await response.json()
-    return data.data
-    */
+    return data
   } catch (error) {
-    // In development, we'll silently use mock data instead of throwing errors
-    console.log(`[Mock API] Using mock data for ${endpoint}`)
-    return null // Return null to signal that the API request "failed" and we should use mock data
+    console.error(`API request error for ${endpoint}:`, error)
+    throw error // Re-throw the error to handle it in the calling code
   }
 }
 
@@ -326,36 +521,6 @@ export async function loginUser(credentials: { email: string; password: string }
 }
 
 // Delegate APIs
-export async function updateDelegateInfo(delegateId: string, data: any) {
-  try {
-    const apiData = await apiRequest(`/delegates/${delegateId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
-
-    if (apiData) return apiData
-
-    // Mock data fallback
-    return {
-      success: true,
-      data: {
-        delegate_id: delegateId,
-        ...data,
-      },
-    }
-  } catch (error) {
-    console.error("Update delegate info API error:", error)
-    // For demo, return mock data
-    return {
-      success: true,
-      data: {
-        delegate_id: delegateId,
-        ...data,
-      },
-    }
-  }
-}
-
 export async function addDelegateExperience(delegateId: string, experienceData: any) {
   try {
     const apiData = await apiRequest(`/delegates/${delegateId}/experiences`, {
@@ -388,43 +553,19 @@ export async function addDelegateExperience(delegateId: string, experienceData: 
   }
 }
 
-// Chair APIs
-export async function updateChairInfo(chairId: string, data: any) {
-  try {
-    const apiData = await apiRequest(`/chairs/${chairId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    })
-
-    if (apiData) return apiData
-
-    // Mock data fallback
-    return {
-      success: true,
-      data: {
-        chair_id: chairId,
-        ...data,
-      },
-    }
-  } catch (error) {
-    console.error("Update chair info API error:", error)
-    // For demo, return mock data
-    return {
-      success: true,
-      data: {
-        chair_id: chairId,
-        ...data,
-      },
-    }
-  }
-}
-
 // Committee APIs
-export async function getCommittees() {
+export async function getCommittees(filters?: { difficulty?: string; chair_id?: string; search_term?: string }) {
   try {
-    const apiData = await apiRequest("/committees")
+    let query = "";
+    if (filters) {
+      const params = new URLSearchParams();
+      if (filters.difficulty && filters.difficulty !== "all") params.append("difficulty", filters.difficulty);
+      if (filters.chair_id) params.append("chair_id", filters.chair_id);
+      if (filters.search_term) params.append("search_term", filters.search_term);
+      query = "?" + params.toString();
+    }
+    const apiData = await apiRequest(`/committees${query}`)
     if (apiData) return apiData
-
     // Mock data fallback
     return [
       {
@@ -546,7 +687,7 @@ export async function getCommittees() {
 
 export async function getFeaturedCommittees() {
   try {
-    const apiData = await apiRequest("/committees?featured=true")
+    const apiData = await apiRequest("/committees")
     if (apiData) return apiData
 
     // Mock data fallback
@@ -617,10 +758,15 @@ export async function getFeaturedCommittees() {
 export async function getCommitteeById(committeeId: string) {
   try {
     const apiData = await apiRequest(`/committees/${committeeId}`)
-    if (apiData) return apiData
-
-    // Mock data fallback
+    if (apiData && apiData.success && apiData.data) {
+      // Return the new structure: { committee, delegates }
+      return apiData
+    }
+    // Fallback for legacy or mock
     return {
+      success: true,
+      data: {
+        committee: {
       committee_id: committeeId,
       name: "United Nations Security Council",
       description:
@@ -637,11 +783,16 @@ export async function getCommitteeById(committeeId: string) {
         { day: "Saturday", time: "9:00 AM - 12:00 PM", activity: "Debate Session 2" },
         { day: "Saturday", time: "2:00 PM - 5:00 PM", activity: "Voting Procedures" },
       ],
+        },
+        delegates: [],
+      },
     }
   } catch (error) {
-    console.log(`Get committee by ID API error for ID ${committeeId}, using mock data:`, error)
     // For demo, return mock data
     return {
+      success: true,
+      data: {
+        committee: {
       committee_id: committeeId,
       name: "United Nations Security Council",
       description:
@@ -658,8 +809,18 @@ export async function getCommitteeById(committeeId: string) {
         { day: "Saturday", time: "9:00 AM - 12:00 PM", activity: "Debate Session 2" },
         { day: "Saturday", time: "2:00 PM - 5:00 PM", activity: "Voting Procedures" },
       ],
+        },
+        delegates: [],
+      },
     }
   }
+}
+
+// Get full committee overview (all data in one call)
+export async function getCommitteeOverview(committeeId: string) {
+  const response = await fetch(`http://localhost:5000/api/committees/overview/${committeeId}`)
+  if (!response.ok) throw new Error('Failed to fetch committee overview')
+  return await response.json()
 }
 
 // Assignment APIs
@@ -701,7 +862,7 @@ export async function allocateDelegate(data: { delegateId: string; committeeId: 
 
 export async function getDelegateAssignments(delegateId: string) {
   try {
-    const apiData = await apiRequest(`/delegate-assignments?delegateId=${delegateId}`)
+    const apiData = await apiRequest(`/delegate-assignments?delegateId=${parseInt(delegateId)}`)
     if (apiData) return apiData
 
     // Mock data fallback
@@ -731,59 +892,10 @@ export async function getDelegateAssignments(delegateId: string) {
   }
 }
 
-// Chair APIs
-export async function getChairCommittees(chairId: string) {
-  try {
-    const apiData = await apiRequest(`/committees?chair_id=${chairId}`)
-    if (apiData) return apiData
-
-    // Mock data fallback
-    return [
-      {
-        committee_id: "1",
-        name: "United Nations Security Council",
-        topic: "Addressing Conflicts in the Middle East",
-        delegate_count: 15,
-        next_session: "Today, 9:00 AM",
-        pending_documents: 3,
-      },
-      {
-        committee_id: "2",
-        name: "World Health Organization",
-        topic: "Global Pandemic Response",
-        delegate_count: 20,
-        next_session: "Tomorrow, 10:00 AM",
-        pending_documents: 5,
-      },
-    ]
-  } catch (error) {
-    console.error("Get chair committees API error:", error)
-    // For demo, return mock data
-    return [
-      {
-        committee_id: "1",
-        name: "United Nations Security Council",
-        topic: "Addressing Conflicts in the Middle East",
-        delegate_count: 15,
-        next_session: "Today, 9:00 AM",
-        pending_documents: 3,
-      },
-      {
-        committee_id: "2",
-        name: "World Health Organization",
-        topic: "Global Pandemic Response",
-        delegate_count: 20,
-        next_session: "Tomorrow, 10:00 AM",
-        pending_documents: 5,
-      },
-    ]
-  }
-}
-
 // Delegate Dashboard APIs
 export async function getDelegateScores(delegateId: string) {
   try {
-    const apiData = await apiRequest(`/scores/delegate/${delegateId}`)
+    const apiData = await apiRequest(`/scores/delegate/${parseInt(delegateId)}`)
     if (apiData) return apiData
 
     // Mock data fallback
@@ -817,7 +929,7 @@ export async function getDelegateScores(delegateId: string) {
 
 export async function getDelegateAttendance(delegateId: string) {
   try {
-    const apiData = await apiRequest(`/attendances/delegate/${delegateId}`)
+    const apiData = await apiRequest(`/attendances/delegate/${parseInt(delegateId)}`)
     if (apiData) return apiData
 
     // Mock data fallback
@@ -841,7 +953,7 @@ export async function getDelegateAttendance(delegateId: string) {
 
 export async function getDelegateDocuments(delegateId: string) {
   try {
-    const apiData = await apiRequest(`/documents/delegate/${delegateId}`)
+    const apiData = await apiRequest(`/documents/delegate/${parseInt(delegateId)}`)
     if (apiData) return apiData
 
     // Mock data fallback
@@ -884,5 +996,39 @@ export async function getDelegateDocuments(delegateId: string) {
         feedback: null,
       },
     ]
+  }
+}
+
+// Get all users
+export async function getAllUsers() {
+  try {
+    const apiData = await apiRequest("/users/all")
+    if (apiData) return apiData
+    // Mock data fallback
+    return {
+      success: true,
+      data: [],
+    }
+  } catch (error) {
+    console.error("Get all users API error:", error)
+    return {
+      success: false,
+      data: [],
+      message: "Failed to fetch users"
+    }
+  }
+}
+
+export async function createCommittee(data: any) {
+  try {
+    const apiData = await apiRequest("/committees", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+    if (apiData) return apiData
+    return { success: false, message: "No response from server", data: null }
+  } catch (error) {
+    console.error("Create committee API error:", error)
+    return { success: false, message: "Failed to create committee", data: null }
   }
 }

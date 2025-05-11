@@ -118,10 +118,10 @@ exports.deleteScore = async (req, res) => {
   }
 };
 
-// Get scores by delegate
+// Get all scores by delegate
 exports.getScoresByDelegate = async (req, res) => {
   try {
-    const scores = await Score.getByDelegate(req.params.id);
+    const scores = await Score.getByDelegate(parseInt(req.params.id));
 
     res.status(200).json({
       success: true,

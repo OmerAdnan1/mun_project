@@ -11,62 +11,11 @@ import { useToast } from "@/components/ui/use-toast"
 
 interface DocumentReviewProps {
   committeeId: string
+  documents: any[]
+  delegates: any[]
 }
 
-export function DocumentReview({ committeeId }: DocumentReviewProps) {
-  const [documents] = useState([
-    {
-      id: "1",
-      title: "Position Paper - France",
-      type: "position_paper",
-      delegate_name: "John Smith",
-      country: "France",
-      submitted_date: "2023-10-01",
-      status: "pending",
-      feedback: "",
-    },
-    {
-      id: "2",
-      title: "Position Paper - Germany",
-      type: "position_paper",
-      delegate_name: "Emma Johnson",
-      country: "Germany",
-      submitted_date: "2023-10-02",
-      status: "approved",
-      feedback: "Well researched and formatted correctly.",
-    },
-    {
-      id: "3",
-      title: "Draft Resolution on Peacekeeping",
-      type: "resolution",
-      delegate_name: "John Smith",
-      country: "France",
-      submitted_date: "2023-10-15",
-      status: "pending",
-      feedback: "",
-    },
-    {
-      id: "4",
-      title: "Position Paper - Japan",
-      type: "position_paper",
-      delegate_name: "Michael Brown",
-      country: "Japan",
-      submitted_date: "2023-10-03",
-      status: "rejected",
-      feedback: "Missing key elements and references. Please revise and resubmit.",
-    },
-    {
-      id: "5",
-      title: "Draft Resolution on Climate Action",
-      type: "resolution",
-      delegate_name: "Sophia Garcia",
-      country: "Brazil",
-      submitted_date: "2023-10-16",
-      status: "pending",
-      feedback: "",
-    },
-  ])
-
+export function DocumentReview({ committeeId, documents, delegates }: DocumentReviewProps) {
   const [selectedDocument, setSelectedDocument] = useState<any>(null)
   const [feedback, setFeedback] = useState("")
   const [loading, setLoading] = useState(false)
@@ -158,9 +107,9 @@ export function DocumentReview({ committeeId }: DocumentReviewProps) {
               <div className="divide-y">
                 {documents.map((doc) => (
                   <div
-                    key={doc.id}
+                    key={doc.document_id}
                     className={`grid grid-cols-12 px-4 py-3 text-sm ${
-                      selectedDocument?.id === doc.id ? "bg-muted/30" : ""
+                      selectedDocument?.document_id === doc.document_id ? "bg-muted/30" : ""
                     }`}
                   >
                     <div className="col-span-5 font-medium">
@@ -168,11 +117,9 @@ export function DocumentReview({ committeeId }: DocumentReviewProps) {
                         <FileText className="mr-2 h-4 w-4 text-blue-500" />
                         <span>{doc.title}</span>
                       </div>
-                      <span className="text-xs text-gray-500">{doc.submitted_date}</span>
                     </div>
                     <div className="col-span-3">
                       <div>{doc.delegate_name}</div>
-                      <div className="text-xs text-gray-500">{doc.country}</div>
                     </div>
                     <div className="col-span-2">
                       <Badge

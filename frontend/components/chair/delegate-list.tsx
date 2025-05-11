@@ -11,15 +11,22 @@ import { AlertCircle, Download, Search } from "lucide-react"
 
 interface DelegateListProps {
   committeeId: string
+  delegates?: any[]
 }
 
-export function DelegateList({ committeeId }: DelegateListProps) {
-  const [delegates, setDelegates] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+export function DelegateList({ committeeId, delegates: propDelegates }: DelegateListProps) {
+  const [delegates, setDelegates] = useState<any[]>(propDelegates || [])
+  const [loading, setLoading] = useState(!propDelegates)
   const [searchQuery, setSearchQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (propDelegates) {
+      setDelegates(propDelegates)
+      setLoading(false)
+      return
+    }
+
     const fetchDelegates = async () => {
       try {
         // In a real app, this would call the API
@@ -120,13 +127,23 @@ export function DelegateList({ committeeId }: DelegateListProps) {
     }
 
     fetchDelegates()
-  }, [committeeId])
+  }, [committeeId, propDelegates])
 
-  const filteredDelegates = delegates.filter(
+  // Normalize delegates for rendering
+  const normalizedDelegates = delegates.map((d) => ({
+    delegate_id: d.delegate_id || d.id,
+    name: d.name || d.delegate_name || "",
+    country: d.country || d.country_name || "",
+    email: d.email || "",
+    status: d.status || "active",
+    position_paper: d.position_paper ?? true,
+  }))
+
+  const filteredDelegates = normalizedDelegates.filter(
     (delegate) =>
-      delegate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      delegate.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      delegate.email.toLowerCase().includes(searchQuery.toLowerCase()),
+      (delegate.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (delegate.country || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (delegate.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (loading) {

@@ -111,3 +111,21 @@ exports.getPastExperiences = async (req, res) => {
     });
   }
 };
+
+// Get all delegates
+exports.getAllDelegates = async (req, res) => {
+  try {
+    const delegates = await Delegate.getAll();
+    res.status(200).json({
+      success: true,
+      data: delegates
+    });
+  } catch (error) {
+    console.error('Get all delegates error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve delegates',
+      error: error.message
+    });
+  }
+};

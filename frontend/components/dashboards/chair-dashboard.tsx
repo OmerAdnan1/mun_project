@@ -8,11 +8,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, ArrowRight, Clock, FileText, Users } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
-import { getChairCommittees } from "@/lib/api"
+import { apiService } from "@/lib/api"
+
+interface Committee {
+  id: string
+  name: string
+  topic: string
+  delegate_count: number
+  next_session: string
+  pending_documents: number
+}
 
 export function ChairDashboard() {
   const { user } = useAuth()
-  const [committees, setCommittees] = useState<any[]>([])
+  const [committees, setCommittees] = useState<Committee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,8 +31,21 @@ export function ChairDashboard() {
         if (!user?.id) return
 
         // Fetch committees assigned to chair
-        const committeesData = await getChairCommittees(user.id)
-        setCommittees(committeesData)
+        const response = await apiService.getChairCommittees(user.id)
+        if (response.success && response.data) {
+          setCommittees(
+            response.data.map((committee: any) => ({
+              id: committee.id || committee.committee_id,
+              name: committee.name,
+              topic: committee.topic,
+              delegate_count: committee.delegate_count || committee.current_delegate_count,
+              next_session: committee.next_session || "-",
+              pending_documents: committee.pending_documents || 0,
+            }))
+          )
+        } else {
+          throw new Error(response.message || "Failed to fetch committees")
+        }
       } catch (err) {
         console.error("Failed to fetch chair data:", err)
         setError("Failed to load chair data")
@@ -31,7 +53,7 @@ export function ChairDashboard() {
         // Fallback to mock data for demonstration
         setCommittees([
           {
-            committee_id: "1",
+            id: "1",
             name: "United Nations Security Council",
             topic: "Addressing Conflicts in the Middle East",
             delegate_count: 15,
@@ -39,7 +61,7 @@ export function ChairDashboard() {
             pending_documents: 3,
           },
           {
-            committee_id: "2",
+            id: "2",
             name: "World Health Organization",
             topic: "Global Pandemic Response",
             delegate_count: 20,
@@ -82,7 +104,7 @@ export function ChairDashboard() {
       <div className="grid gap-6 md:grid-cols-2">
         {committees.length > 0 ? (
           committees.map((committee) => (
-            <Card key={committee.committee_id}>
+            <Card key={committee.id}>
               <CardHeader>
                 <CardTitle>{committee.name}</CardTitle>
                 <CardDescription>{committee.topic}</CardDescription>
@@ -114,7 +136,7 @@ export function ChairDashboard() {
                 </div>
 
                 <Button className="w-full" asChild>
-                  <Link href={`/chair/committee/${committee.committee_id}/manage`}>
+                  <Link href={`/chair/committee/${committee.id}/manage`}>
                     Manage Committee
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>

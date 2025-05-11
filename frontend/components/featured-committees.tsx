@@ -24,6 +24,8 @@ export function FeaturedCommittees() {
         // If we got data back, use it
         if (data && Array.isArray(data)) {
           setCommittees(data)
+        } else if (data && Array.isArray(data.data)) {
+          setCommittees(data.data)
         } else {
           // If no data or invalid data, show an error
           setError("Unable to load committees data")

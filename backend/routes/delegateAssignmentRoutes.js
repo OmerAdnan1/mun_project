@@ -24,4 +24,7 @@ router.post('/allocate/single', delegateAssignmentController.allocateCountryToSi
 // Allocate countries by experience for an entire committee
 router.post('/allocate/committee/:committeeId', delegateAssignmentController.allocateCountriesByExperience);
 
+// Get all assignments (admin view)
+router.get('/all', delegateAssignmentController.getAllAssignments);
+
 module.exports = router;

@@ -141,7 +141,7 @@ exports.deleteAttendance = async (req, res) => {
 // Get attendance by delegate
 exports.getAttendanceByDelegate = async (req, res) => {
   try {
-    const attendance = await Attendance.getByDelegate(req.params.id);
+    const attendance = await Attendance.getByDelegate(parseInt(req.params.id));
 
     res.status(200).json({
       success: true,
@@ -149,10 +149,10 @@ exports.getAttendanceByDelegate = async (req, res) => {
       data: attendance
     });
   } catch (error) {
-    console.error('Get delegate attendance error:', error);
+    console.error('Get attendance by delegate error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve attendance records',
+      message: 'Failed to retrieve attendance',
       error: error.message
     });
   }

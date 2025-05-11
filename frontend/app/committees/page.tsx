@@ -1,9 +1,15 @@
+"use client"
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search } from "lucide-react"
 import { CommitteesList } from "@/components/committees-list"
 
 export default function CommitteesPage() {
+  const [search, setSearch] = useState("")
+  const [difficulty, setDifficulty] = useState("all")
+  // You can add chair_id and availability filters as needed
+
   return (
     <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl text-center">
@@ -21,14 +27,20 @@ export default function CommitteesPage() {
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input id="search" placeholder="Search committees..." className="pl-9" />
+              <Input
+                id="search"
+                placeholder="Search committees..."
+                className="pl-9"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
             </div>
           </div>
           <div>
             <label htmlFor="difficulty" className="mb-1 block text-sm font-medium text-gray-700">
               Difficulty Level
             </label>
-            <Select>
+            <Select value={difficulty} onValueChange={setDifficulty}>
               <SelectTrigger id="difficulty">
                 <SelectValue placeholder="All Levels" />
               </SelectTrigger>
@@ -60,7 +72,7 @@ export default function CommitteesPage() {
 
       {/* Committees List */}
       <div className="mt-8">
-        <CommitteesList />
+        <CommitteesList filters={{ difficulty, search_term: search }} />
       </div>
     </div>
   )

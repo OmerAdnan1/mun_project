@@ -17,6 +17,17 @@ class Delegate {
     }
   }
 
+  // Get all delegates
+  static async getAll() {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request().query('SELECT d.user_id, u.full_name, u.email FROM Delegates d JOIN Users u ON d.user_id = u.user_id');
+      return result.recordset;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Update delegate details
   static async update(delegateId, delegateData) {
     try {

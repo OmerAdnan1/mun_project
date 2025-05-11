@@ -125,3 +125,19 @@ exports.getAllCountries = async (req, res) => {
     });
   }
 };
+
+// Get available countries for a committee (and optionally block)
+exports.getAvailableCountries = async (req, res) => {
+  try {
+    const committeeId = parseInt(req.query.committee_id);
+    const blockId = req.query.block_id ? parseInt(req.query.block_id) : null;
+    if (!committeeId) {
+      return res.status(400).json({ success: false, message: 'committee_id is required' });
+    }
+    const countries = await Country.getAvailableCountries(committeeId, blockId);
+    res.status(200).json({ success: true, data: countries });
+  } catch (error) {
+    console.error('Get available countries error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get available countries', error: error.message });
+  }
+};

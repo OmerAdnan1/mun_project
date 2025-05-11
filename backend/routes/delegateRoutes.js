@@ -3,6 +3,9 @@ const express = require('express');
 const router = express.Router();
 const delegateController = require('../controllers/delegateController');
 
+// Get all delegates
+router.get('/', delegateController.getAllDelegates);
+
 // Get delegate by ID
 router.get('/:id', delegateController.getDelegateById);
 

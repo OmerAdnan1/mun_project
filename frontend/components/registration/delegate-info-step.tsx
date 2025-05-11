@@ -13,18 +13,29 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, Plus, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { getCommittees, updateDelegateInfo, addDelegateExperience, allocateDelegate } from "@/lib/api"
+import { apiService } from "@/lib/api"
+
+interface Committee {
+  committee_id: string;
+  name: string;
+  topic: string;
+  difficulty: string;
+  capacity: number;
+  current_delegate_count: number;
+  chair_name: string;
+}
 
 interface DelegateInfoStepProps {
-  formData: any
-  updateFormData: (data: any) => void
-  onNext: () => void
-  onBack: () => void
+  formData: any;
+  updateFormData: (data: any) => void;
+  onNext: () => void;
+  onBack: () => void;
 }
 
 export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: DelegateInfoStepProps) {
-  const [loading, setLoading] = useState(false)
-  const [committees, setCommittees] = useState<any[]>([])
+  const [committees, setCommittees] = useState<Committee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [loadingCommittees, setLoadingCommittees] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [newExperience, setNewExperience] = useState({
@@ -33,46 +44,35 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
     committee: "",
     country: "",
   })
-  const [apiError, setApiError] = useState<string | null>(null)
+  const [newAward, setNewAward] = useState({
+    award_name: "",
+    conference: "",
+    year: "",
+  })
   const { toast } = useToast()
 
   useEffect(() => {
     const fetchCommittees = async () => {
       try {
-        const data = await getCommittees()
-        setCommittees(data)
+        setLoading(true)
+        console.log('Fetching committees...')
+        const response = await apiService.getCommittees()
+        console.log('API Response:', response)
+        
+        if (response && Array.isArray(response)) {
+          console.log('Setting committees:', response)
+          setCommittees(response)
+        } else {
+          console.error('Invalid response format:', response)
+          setCommittees([])
+          setError("Failed to load committees: Invalid response format")
+        }
       } catch (err) {
-        console.error("Failed to fetch committees:", err)
-        setApiError("Failed to load committees")
-        // Fallback to mock data for demonstration
-        setCommittees([
-          {
-            committee_id: "1",
-            name: "United Nations Security Council",
-            topic: "Addressing Conflicts in the Middle East",
-            difficulty: "Advanced",
-            capacity: 15,
-            current_delegate_count: 10,
-          },
-          {
-            committee_id: "2",
-            name: "World Health Organization",
-            topic: "Global Pandemic Response",
-            difficulty: "Intermediate",
-            capacity: 20,
-            current_delegate_count: 15,
-          },
-          {
-            committee_id: "3",
-            name: "UN Environment Programme",
-            topic: "Climate Change Mitigation",
-            difficulty: "Beginner",
-            capacity: 25,
-            current_delegate_count: 18,
-          },
-        ])
+        console.error("Error fetching committees:", err)
+        setError("Failed to load committees: " + (err instanceof Error ? err.message : 'Unknown error'))
+        setCommittees([])
       } finally {
-        setLoadingCommittees(false)
+        setLoading(false)
       }
     }
 
@@ -126,6 +126,32 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
     updateFormData({ past_experiences: updatedExperiences })
   }
 
+  const handleAddAward = () => {
+    if (!newAward.award_name || !newAward.conference || !newAward.year) {
+      toast({
+        variant: "destructive",
+        title: "Missing information",
+        description: "Award name, conference, and year are required.",
+      })
+      return
+    }
+
+    const updatedAwards = [...(formData.awards || []), { ...newAward }]
+    updateFormData({ awards: updatedAwards })
+
+    setNewAward({
+      award_name: "",
+      conference: "",
+      year: "",
+    })
+  }
+
+  const handleRemoveAward = (index: number) => {
+    const updatedAwards = [...formData.awards]
+    updatedAwards.splice(index, 1)
+    updateFormData({ awards: updatedAwards })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -137,7 +163,7 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
 
     try {
       // Update delegate info
-      await updateDelegateInfo(formData.user_id, {
+      await apiService.updateDelegateInfo(formData.user_id, {
         experience_level: formData.experience_level,
         emergency_contact: formData.emergency_contact,
       })
@@ -145,12 +171,12 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
       // Add past experiences
       if (formData.past_experiences?.length > 0) {
         for (const experience of formData.past_experiences) {
-          await addDelegateExperience(formData.user_id, experience)
+          await apiService.addDelegateExperience(formData.user_id, experience)
         }
       }
 
       // Allocate committee
-      const allocation = await allocateDelegate({
+      const allocation = await apiService.allocateDelegate({
         delegateId: formData.user_id,
         committeeId: formData.selected_committee_id,
       })
@@ -184,11 +210,11 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {apiError && (
+      {error && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Note</AlertTitle>
-          <AlertDescription>[Sample Data] Showing example committees for demonstration.</AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -314,29 +340,149 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
         </div>
 
         <div className="space-y-2">
+          <Label>Awards & Recognition</Label>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Add Awards</CardTitle>
+              <CardDescription>Add any awards or recognition you've received (optional)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="award_name">Award Name</Label>
+                    <Input
+                      id="award_name"
+                      value={newAward.award_name}
+                      onChange={(e) => setNewAward({ ...newAward, award_name: e.target.value })}
+                      placeholder="e.g., Best Delegate"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="award_conference">Conference</Label>
+                    <Input
+                      id="award_conference"
+                      value={newAward.conference}
+                      onChange={(e) => setNewAward({ ...newAward, conference: e.target.value })}
+                      placeholder="e.g., Harvard MUN"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="award_year">Year</Label>
+                  <Input
+                    id="award_year"
+                    value={newAward.year}
+                    onChange={(e) => setNewAward({ ...newAward, year: e.target.value })}
+                    placeholder="e.g., 2023"
+                  />
+                </div>
+                <Button type="button" variant="outline" className="mt-2" onClick={handleAddAward}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Award
+                </Button>
+              </div>
+
+              {formData.awards?.length > 0 && (
+                <div className="mt-6 space-y-4">
+                  <h4 className="text-sm font-medium">Added Awards:</h4>
+                  <div className="space-y-2">
+                    {formData.awards.map((award: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between rounded-md border border-gray-200 p-3"
+                      >
+                        <div>
+                          <p className="font-medium">{award.award_name}</p>
+                          <p className="text-sm text-gray-500">
+                            {award.conference} ({award.year})
+                          </p>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveAward(index)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Further Information</Label>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Special Needs or Accommodations</CardTitle>
+              <CardDescription>Add any special needs or accommodations you require</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="special_needs">Special Needs or Accommodations</Label>
+                  <Textarea
+                    id="special_needs"
+                    value={formData.special_needs || ""}
+                    onChange={(e) => updateFormData({ special_needs: e.target.value })}
+                    placeholder="Please let us know if you require any special accommodations"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dietary_restrictions">Dietary Restrictions</Label>
+                  <Textarea
+                    id="dietary_restrictions"
+                    value={formData.dietary_restrictions || ""}
+                    onChange={(e) => updateFormData({ dietary_restrictions: e.target.value })}
+                    placeholder="Please let us know if you have any dietary restrictions"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="additional_notes">Additional Notes</Label>
+                  <Textarea
+                    id="additional_notes"
+                    value={formData.additional_notes || ""}
+                    onChange={(e) => updateFormData({ additional_notes: e.target.value })}
+                    placeholder="Any other information you'd like to share"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="selected_committee_id">
             Committee Selection <span className="text-red-500">*</span>
           </Label>
 
-          {loadingCommittees ? (
+          {loading ? (
             <p className="text-sm text-gray-500">Loading committees...</p>
           ) : (
-            <>
               <Select
                 value={formData.selected_committee_id || ""}
-                onValueChange={(value) => updateFormData({ selected_committee_id: value })}
+              onValueChange={(value) => {
+                const selectedCommittee = committees.find((c) => c.committee_id === value);
+                updateFormData({ 
+                  selected_committee_id: value,
+                  selected_committee_name: selectedCommittee?.name || ""
+                });
+              }}
               >
                 <SelectTrigger
                   id="selected_committee_id"
                   className={errors.selected_committee_id ? "border-red-500" : ""}
                 >
-                  <SelectValue placeholder="Select a committee" />
+                <SelectValue placeholder="Select a committee">
+                  {formData.selected_committee_name || "Select a committee"}
+                </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {committees.map((committee) => {
-                    const seatsAvailable = committee.capacity - committee.current_delegate_count
-                    const isAvailable = seatsAvailable > 0
-
+                  const seatsAvailable = committee.capacity - committee.current_delegate_count;
+                  const isAvailable = seatsAvailable > 0;
                     return (
                       <SelectItem key={committee.committee_id} value={committee.committee_id} disabled={!isAvailable}>
                         <div className="flex items-center justify-between">
@@ -349,22 +495,12 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
                           </Badge>
                         </div>
                       </SelectItem>
-                    )
+                  );
                   })}
                 </SelectContent>
               </Select>
-              {errors.selected_committee_id && <p className="text-xs text-red-500">{errors.selected_committee_id}</p>}
-
-              {formData.selected_committee_id && (
-                <div className="mt-2">
-                  <p className="text-sm text-gray-600">
-                    Selected committee:{" "}
-                    {committees.find((c) => c.committee_id === formData.selected_committee_id)?.name}
-                  </p>
-                </div>
-              )}
-            </>
           )}
+              {errors.selected_committee_id && <p className="text-xs text-red-500">{errors.selected_committee_id}</p>}
         </div>
       </div>
 
