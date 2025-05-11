@@ -4712,7 +4712,8 @@ begin
 
     select 
         c.country_id,
-        c.name
+        c.name,
+        c.importance
     from 
         dbo.Countries c
     left join dbo.DelegateAssignments da on c.country_id = da.country_id
@@ -4923,5 +4924,20 @@ BEGIN
     SELECT user_id, email, full_name, role, phone, created_at,  'active' as is_active 
     FROM Users
     ORDER BY created_at DESC
+END;
+GO
+
+-- Admin Dashboard Counts
+CREATE OR ALTER PROCEDURE sp_GetAdminDashboardCounts
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT
+        (SELECT COUNT(*) FROM dbo.Delegates) AS delegate_count,
+        (SELECT COUNT(*) FROM dbo.Committees) AS committee_count,
+        (SELECT COUNT(*) FROM dbo.DelegateAssignments) AS assignment_count,
+        (SELECT COUNT(*) FROM dbo.Documents) AS document_count,
+        (SELECT COUNT(*) FROM dbo.Countries) AS country_count
 END;
 GO

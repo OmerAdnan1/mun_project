@@ -130,6 +130,16 @@ class Admin {
     }
   }
 
+  static async getDashboardCounts() {
+    try {
+      const pool = await poolPromise;
+      const result = await pool.request().execute('sp_GetAdminDashboardCounts');
+      return result.recordset[0];
+    } catch (error) {
+      throw error;
+    }
+  }
+
 }
 
 module.exports = Admin;

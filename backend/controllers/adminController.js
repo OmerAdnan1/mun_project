@@ -303,3 +303,14 @@ exports.getAllDelegateAssignments = async (req, res) => {
     });
   }
 };
+
+// Get admin dashboard counts
+exports.getDashboardCounts = async (req, res) => {
+  try {
+    const counts = await Admin.getDashboardCounts();
+    res.status(200).json({ success: true, data: counts });
+  } catch (error) {
+    console.error('Get dashboard counts error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get dashboard counts', error: error.message });
+  }
+};
