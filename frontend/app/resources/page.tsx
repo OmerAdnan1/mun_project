@@ -262,31 +262,31 @@ export default function ResourcesPage() {
                     {
                       title: "Model UN Explained",
                       description: "A comprehensive introduction to Model UN for beginners.",
-                      url: "https://www.youtube.com/watch?v=example1",
+                      url: "https://youtu.be/nijZhSnDyrg?si=Bu1s3NWCSGwXyoUl",
                       tags: ["Beginner", "Overview"],
                     },
                     {
                       title: "Public Speaking Tips for MUN",
                       description: "Improve your public speaking skills for committee sessions.",
-                      url: "https://www.youtube.com/watch?v=example2",
+                      url: "https://youtu.be/YPr9df-1lr0?si=r3yQ5tNnEhZWw_TO",
                       tags: ["Speaking", "Skills"],
                     },
                     {
                       title: "How to Research for Model UN",
                       description: "Effective research strategies for Model UN preparation.",
-                      url: "https://www.youtube.com/watch?v=example3",
+                      url: "https://youtu.be/JrYFO7xg1-o?si=lWTZW8r3GER7affv",
                       tags: ["Research", "Preparation"],
                     },
                     {
                       title: "Resolution Writing Tutorial",
                       description: "Step-by-step guide to writing effective resolutions.",
-                      url: "https://www.youtube.com/watch?v=example4",
+                      url: "https://youtu.be/KLoktLNfXRo?si=AAALmEgpjEIXk9Fp",
                       tags: ["Writing", "Advanced"],
                     },
                     {
                       title: "Sample Committee Session",
                       description: "Watch a recorded committee session to understand the flow.",
-                      url: "https://www.youtube.com/watch?v=example5",
+                      url: "https://youtu.be/BYYwBLJ9q5E?si=IaV-DPa1mg7PkU3d",
                       tags: ["Simulation", "Example"],
                     },
                   ].map((resource, index) => (
@@ -345,6 +345,7 @@ export default function ResourcesPage() {
           </div>
         </div>
       </div>
+
     </div>
   )
 }

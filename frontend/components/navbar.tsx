@@ -25,6 +25,7 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "Committees", href: "/committees" },
     { name: "Resources", href: "/resources" },
+    { name: "Schedule", href: "/schedule" }, // Added schedule link
   ]
 
   const isActive = (path: string) => {
