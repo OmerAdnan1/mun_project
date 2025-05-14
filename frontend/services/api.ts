@@ -598,7 +598,12 @@ export const reviewDocument = async (documentId: number, { status, feedback }: {
 
 // Fetch all documents for a committee (for chair review, voting, etc.)
 export const fetchCommitteeDocuments = async (committeeId: number) => {
-  const response = await fetch(`${API_URL}/documents?committee_id=${committeeId}`)
-  if (!response.ok) throw new Error("Failed to fetch documents")
-  return await response.json()
+  try {
+    const response = await fetch(`${API_URL}/documents?committee_id=${committeeId}`)
+    if (!response.ok) throw new Error("Failed to fetch documents")
+    const data = await response.json()
+    return data
+  } catch (error) {
+    return { success: false, data: [], message: (error as Error).message }
+  }
 }
