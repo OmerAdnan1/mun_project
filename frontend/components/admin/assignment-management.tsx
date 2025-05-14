@@ -24,6 +24,8 @@ export function AdminAssignmentManagement() {
   const { toast } = useToast()
   const [delegates, setDelegates] = useState<any[]>([])
   const [availableCountries, setAvailableCountries] = useState<any[]>([])
+  const [allocating, setAllocating] = useState(false)
+  const [selectedCommitteeForAlloc, setSelectedCommitteeForAlloc] = useState("")
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,8 +73,8 @@ export function AdminAssignmentManagement() {
     // Fetch available countries for the selected committee
     if (assignment.committee_id) {
       try {
-        const res = await apiService.api.get(`/countries/available?committee_id=${assignment.committee_id}`)
-        setAvailableCountries(res.data.data || [])
+        const res = await apiService.getAvailableCountries(assignment.committee_id)
+        setAvailableCountries(res.data || [])
       } catch (err) {
         setAvailableCountries([])
       }
@@ -124,6 +126,39 @@ export function AdminAssignmentManagement() {
     return matchesSearch && matchesCommittee
   })
 
+  const refreshAssignments = async () => {
+    setLoading(true)
+    try {
+      const assignmentsRes = await apiService.getAllDelegateAssignments()
+      if (assignmentsRes.success) setAssignments(assignmentsRes.data)
+    } catch (error) {
+      // Optionally show error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAutoAllocate = async () => {
+    if (!selectedCommitteeForAlloc) {
+      toast({ variant: "destructive", title: "Select a committee first" })
+      return
+    }
+    setAllocating(true)
+    try {
+      const res = await apiService.allocateCountriesByExperience(selectedCommitteeForAlloc)
+      if (res.success) {
+        toast({ title: "Countries allocated successfully" })
+        await refreshAssignments()
+      } else {
+        toast({ variant: "destructive", title: "Allocation failed", description: res.message || "Try again later" })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Allocation failed", description: "Try again later" })
+    } finally {
+      setAllocating(false)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -131,6 +166,23 @@ export function AdminAssignmentManagement() {
           <div>
             <CardTitle>Delegate Assignments</CardTitle>
             <CardDescription>Manage delegate assignments to committees</CardDescription>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Select value={selectedCommitteeForAlloc} onValueChange={setSelectedCommitteeForAlloc}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select committee" />
+              </SelectTrigger>
+              <SelectContent>
+                {committees.map((c) => (
+                  <SelectItem key={c.committee_id || c.id} value={c.committee_id || c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAutoAllocate} disabled={allocating || !selectedCommitteeForAlloc} variant="secondary">
+              {allocating ? "Allocating..." : "Auto Allocate Countries"}
+            </Button>
           </div>
         </div>
       </CardHeader>

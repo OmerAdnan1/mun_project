@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle, Plus, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { apiService } from "@/lib/api"
+import { apiService, addDelegateExperience, allocateDelegate } from "@/lib/api"
 
 interface Committee {
   committee_id: string;
@@ -43,11 +43,7 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
     year: "",
     committee: "",
     country: "",
-  })
-  const [newAward, setNewAward] = useState({
-    award_name: "",
-    conference: "",
-    year: "",
+    awards: "none"
   })
   const { toast } = useToast()
 
@@ -55,27 +51,21 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
     const fetchCommittees = async () => {
       try {
         setLoading(true)
-        console.log('Fetching committees...')
         const response = await apiService.getCommittees()
-        console.log('API Response:', response)
-        
-        if (response && Array.isArray(response)) {
-          console.log('Setting committees:', response)
-          setCommittees(response)
-        } else {
-          console.error('Invalid response format:', response)
-          setCommittees([])
-          setError("Failed to load committees: Invalid response format")
+        let committeesArr: Committee[] = []
+        if (Array.isArray(response)) {
+          committeesArr = response as Committee[]
+        } else if (response && Array.isArray(response.data)) {
+          committeesArr = response.data as unknown as Committee[]
         }
+        setCommittees(committeesArr)
       } catch (err) {
-        console.error("Error fetching committees:", err)
-        setError("Failed to load committees: " + (err instanceof Error ? err.message : 'Unknown error'))
+        setError("Failed to load committees")
         setCommittees([])
       } finally {
         setLoading(false)
       }
     }
-
     fetchCommittees()
   }, [])
 
@@ -107,16 +97,16 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
       })
       return
     }
-
-    const updatedExperiences = [...(formData.past_experiences || []), { ...newExperience }]
-
+    // Convert 'none' to empty string/null for awards
+    const awardsValue = newExperience.awards === "none" ? "" : newExperience.awards
+    const updatedExperiences = [...(formData.past_experiences || []), { ...newExperience, awards: awardsValue }]
     updateFormData({ past_experiences: updatedExperiences })
-
     setNewExperience({
       conference_name: "",
       year: "",
       committee: "",
       country: "",
+      awards: "none"
     })
   }
 
@@ -124,32 +114,6 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
     const updatedExperiences = [...formData.past_experiences]
     updatedExperiences.splice(index, 1)
     updateFormData({ past_experiences: updatedExperiences })
-  }
-
-  const handleAddAward = () => {
-    if (!newAward.award_name || !newAward.conference || !newAward.year) {
-      toast({
-        variant: "destructive",
-        title: "Missing information",
-        description: "Award name, conference, and year are required.",
-      })
-      return
-    }
-
-    const updatedAwards = [...(formData.awards || []), { ...newAward }]
-    updateFormData({ awards: updatedAwards })
-
-    setNewAward({
-      award_name: "",
-      conference: "",
-      year: "",
-    })
-  }
-
-  const handleRemoveAward = (index: number) => {
-    const updatedAwards = [...formData.awards]
-    updatedAwards.splice(index, 1)
-    updateFormData({ awards: updatedAwards })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,12 +135,12 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
       // Add past experiences
       if (formData.past_experiences?.length > 0) {
         for (const experience of formData.past_experiences) {
-          await apiService.addDelegateExperience(formData.user_id, experience)
+          await addDelegateExperience(formData.user_id, experience)
         }
       }
 
       // Allocate committee
-      const allocation = await apiService.allocateDelegate({
+      const allocation = await allocateDelegate({
         delegateId: formData.user_id,
         committeeId: formData.selected_committee_id,
       })
@@ -303,6 +267,23 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="awards">Award</Label>
+                  <Select
+                    value={newExperience.awards}
+                    onValueChange={(value) => setNewExperience({ ...newExperience, awards: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select award (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="BD">Best Delegate (BD)</SelectItem>
+                      <SelectItem value="OD">Outstanding Delegate (OD)</SelectItem>
+                      <SelectItem value="HM">Honorable Mention (HM)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button type="button" variant="outline" className="mt-2" onClick={handleAddExperience}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Experience
@@ -325,81 +306,10 @@ export function DelegateInfoStep({ formData, updateFormData, onNext, onBack }: D
                           <p className="text-sm text-gray-500">
                             {exp.committee}
                             {exp.country ? `, ${exp.country}` : ""}
+                            {exp.awards && exp.awards !== "none" ? `, Award: ${exp.awards}` : ""}
                           </p>
                         </div>
                         <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveExperience(index)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Awards & Recognition</Label>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Add Awards</CardTitle>
-              <CardDescription>Add any awards or recognition you've received (optional)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="award_name">Award Name</Label>
-                    <Input
-                      id="award_name"
-                      value={newAward.award_name}
-                      onChange={(e) => setNewAward({ ...newAward, award_name: e.target.value })}
-                      placeholder="e.g., Best Delegate"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="award_conference">Conference</Label>
-                    <Input
-                      id="award_conference"
-                      value={newAward.conference}
-                      onChange={(e) => setNewAward({ ...newAward, conference: e.target.value })}
-                      placeholder="e.g., Harvard MUN"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="award_year">Year</Label>
-                  <Input
-                    id="award_year"
-                    value={newAward.year}
-                    onChange={(e) => setNewAward({ ...newAward, year: e.target.value })}
-                    placeholder="e.g., 2023"
-                  />
-                </div>
-                <Button type="button" variant="outline" className="mt-2" onClick={handleAddAward}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Award
-                </Button>
-              </div>
-
-              {formData.awards?.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  <h4 className="text-sm font-medium">Added Awards:</h4>
-                  <div className="space-y-2">
-                    {formData.awards.map((award: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-md border border-gray-200 p-3"
-                      >
-                        <div>
-                          <p className="font-medium">{award.award_name}</p>
-                          <p className="text-sm text-gray-500">
-                            {award.conference} ({award.year})
-                          </p>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveAward(index)}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>

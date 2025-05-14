@@ -288,6 +288,48 @@ class ApiService {
     }
   }
 
+  async updateDelegateAssignment(assignmentId: string, data: { committeeId?: string; countryId?: string; blockId?: string }) {
+    try {
+      const response = await this.api.put(`/delegate-assignments/${assignmentId}`, data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async deleteDelegateAssignment(assignmentId: string) {
+    try {
+      const response = await this.api.delete(`/delegate-assignments/${assignmentId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async getAvailableCountries(committeeId: string, blockId?: string) {
+    try {
+      let url = `/countries/available?committee_id=${committeeId}`;
+      if (blockId) url += `&block_id=${blockId}`;
+      const response = await this.api.get(url);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async allocateCountriesByExperience(committeeId: string) {
+    try {
+      const response = await this.api.post(`/delegate-assignments/allocate/committee/${committeeId}`)
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
   // Country APIs
   async getCountries(): Promise<ApiResponse<any[]>> {
     const response = await this.api.get('/countries');
@@ -899,6 +941,19 @@ export async function getDelegateAssignments(delegateId: string) {
         topic: "Addressing Conflicts in the Middle East",
       },
     ]
+  }
+}
+
+// Allocate countries to all delegates in a committee by experience
+export async function allocateCountriesByExperience(committeeId: string) {
+  try {
+    const apiData = await apiRequest(`/delegate-assignments/allocate/committee/${committeeId}`, {
+      method: "POST"
+    })
+    return apiData
+  } catch (error) {
+    console.error("Allocate countries by experience API error:", error)
+    return { success: false, message: "Failed to allocate countries by experience", data: [] }
   }
 }
 
