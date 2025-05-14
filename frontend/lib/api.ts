@@ -181,12 +181,12 @@ class ApiService {
     return response.data;
   }
 
-  async uploadDocument(formData: FormData): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/documents', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+  /**
+   * Upload a document by Google Docs link (position paper or resolution)
+   * @param data { delegate_id, committee_id, title, type, doc_link }
+   */
+  async uploadDocument(data: { delegate_id: number; committee_id: number; title: string; type: string; doc_link: string }): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/documents', data);
     return response.data;
   }
 

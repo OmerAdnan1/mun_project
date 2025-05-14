@@ -3,6 +3,10 @@ const Document = require('../models/Document');
 // Create a new document
 exports.createDocument = async (req, res) => {
   try {
+    // Map doc_link to file_url for Google Docs links
+    if (req.body.doc_link) {
+      req.body.file_url = req.body.doc_link;
+    }
     const document = await Document.create(req.body);
 
     res.status(201).json({
