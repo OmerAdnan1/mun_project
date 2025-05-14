@@ -4,6 +4,7 @@ class Document {
   // Create a new document
   static async create(documentData) {
     try {
+      console.log('[Document.create] input:', documentData);
       const pool = await poolPromise;
       const request = pool.request();
 
@@ -20,10 +21,12 @@ class Document {
 
       const result = await request.execute('sp_CreateDocument');
       const documentId = result.output.document_id;
+      console.log('[Document.create] result:', result);
       
       // Return the created document
       return this.getById(documentId);
     } catch (error) {
+      console.error('[Document.create] error:', error);
       throw error;
     }
   }
@@ -31,14 +34,17 @@ class Document {
   // Get document by ID
   static async getById(documentId) {
     try {
+      console.log('[Document.getById] documentId:', documentId);
       const pool = await poolPromise;
       const request = pool.request();
 
       request.input('document_id', sql.Int, documentId);
 
       const result = await request.execute('sp_GetDocumentById');
+      console.log('[Document.getById] result:', result);
       return result.recordset[0];
     } catch (error) {
+      console.error('[Document.getById] error:', error);
       throw error;
     }
   }
@@ -46,6 +52,7 @@ class Document {
   // Update document
   static async update(documentId, documentData) {
     try {
+      console.log('[Document.update] documentId:', documentId, 'documentData:', documentData);
       const pool = await poolPromise;
       const request = pool.request();
 
@@ -58,10 +65,12 @@ class Document {
       request.input('status', sql.VarChar(10), documentData.status || null);
 
       await request.execute('sp_UpdateDocument');
+      console.log('[Document.update] updated');
       
       // Return the updated document
       return this.getById(documentId);
     } catch (error) {
+      console.error('[Document.update] error:', error);
       throw error;
     }
   }
@@ -69,14 +78,17 @@ class Document {
   // Delete document
   static async delete(documentId) {
     try {
+      console.log('[Document.delete] documentId:', documentId);
       const pool = await poolPromise;
       const request = pool.request();
 
       request.input('document_id', sql.Int, documentId);
 
       await request.execute('sp_DeleteDocument');
+      console.log('[Document.delete] deleted');
       return true;
     } catch (error) {
+      console.error('[Document.delete] error:', error);
       throw error;
     }
   }
@@ -84,6 +96,7 @@ class Document {
   // Get documents by committee
   static async getByCommittee(committeeId, filters = {}) {
     try {
+      console.log('[Document.getByCommittee] committeeId:', committeeId, 'filters:', filters);
       const pool = await poolPromise;
       const request = pool.request();
 
@@ -92,8 +105,10 @@ class Document {
       request.input('status', sql.VarChar(10), filters.status || null);
 
       const result = await request.execute('sp_GetDocumentsByCommittee');
+      console.log('[Document.getByCommittee] result:', result);
       return result.recordset;
     } catch (error) {
+      console.error('[Document.getByCommittee] error:', error);
       throw error;
     }
   }
@@ -101,6 +116,7 @@ class Document {
   // Get documents by delegate
   static async getByDelegate(delegateId, filters = {}) {
     try {
+      console.log('[Document.getByDelegate] delegateId:', delegateId, 'filters:', filters);
       const pool = await poolPromise;
       const request = pool.request();
 
@@ -109,8 +125,10 @@ class Document {
       request.input('status', sql.VarChar(10), filters.status || null);
 
       const result = await request.execute('sp_GetDocumentsByDelegate');
+      console.log('[Document.getByDelegate] result:', result);
       return result.recordset;
     } catch (error) {
+      console.error('[Document.getByDelegate] error:', error);
       throw error;
     }
   }

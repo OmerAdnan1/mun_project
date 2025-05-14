@@ -552,48 +552,47 @@ export const fetchResolutionsForVoting = async (committeeId: number) => {
 }
 
 // Fetch voting results for a resolution (document)
-export const fetchVotingResults = async (resolutionId: number) => {
-  // In a real app, fetch from backend: `${API_URL}/votes/document/${resolutionId}`
-  // Here, return mock data
-  const votes = { yes: 8, no: 3, abstain: 2 }
-  const countries = [
-    { country_id: 1, country_name: "France", vote: "yes" },
-    { country_id: 2, country_name: "USA", vote: "no" },
-    { country_id: 3, country_name: "China", vote: "abstain" },
-  ]
-  return simulateApiCall({
-    resolution_id: resolutionId,
-    title: `Resolution ${resolutionId}`,
-    description: `Description for resolution ${resolutionId}`,
-    author: "France",
-    country: "France",
-    committee_name: "UN Security Council",
-    votes,
-    total_votes: votes.yes + votes.no + votes.abstain,
-    countries,
-    voting_status: "active",
+export const fetchVotingResults = async (documentId: number) => {
+  // Real backend call
+  const response = await fetch(`${API_URL}/votes/document/${documentId}`)
+  if (!response.ok) throw new Error("Failed to fetch voting results")
+  return await response.json()
+}
+
+// Update voting status for a document (start/end voting)
+export const updateVotingStatus = async (documentId: number, status: "in_progress" | "completed" | "pending") => {
+  // Real backend call
+  const response = await fetch(`${API_URL}/documents/${documentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status })
   })
+  if (!response.ok) throw new Error("Failed to update voting status")
+  return await response.json()
 }
 
-// Update voting status for a resolution (start/end voting)
-export const updateVotingStatus = async (resolutionId: number, status: "in_progress" | "completed" | "pending") => {
-  // In a real app, PATCH/PUT to backend: `${API_URL}/documents/${resolutionId}`
-  // Here, just simulate
-  return simulateApiCall({ resolution_id: resolutionId, voting_status: status })
-}
-
-// Cast a vote for a resolution (document)
+// Cast a vote for a document
 export const castVote = async ({ delegate_id, document_id, vote }: { delegate_id: number, document_id: number, vote: "yes" | "no" | "abstain" }) => {
-  // In a real app, POST to backend: `${API_URL}/votes` with { delegate_id, document_id, vote }
-  // Here, just simulate
-  return simulateApiCall({ vote_id: Math.floor(Math.random() * 10000), delegate_id, document_id, vote })
+  // Real backend call
+  const response = await fetch(`${API_URL}/votes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ delegate_id, document_id, vote })
+  })
+  if (!response.ok) throw new Error("Failed to cast vote")
+  return await response.json()
 }
 
 // Chair: Approve or reject a document
 export const reviewDocument = async (documentId: number, { status, feedback }: { status: "approved" | "rejected", feedback?: string }) => {
-  // In a real app, PATCH/PUT to backend: `${API_URL}/documents/${documentId}` with { status, feedback }
-  // Here, just simulate
-  return simulateApiCall({ document_id: documentId, status, feedback })
+  // Real backend call
+  const response = await fetch(`${API_URL}/documents/${documentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, feedback })
+  })
+  if (!response.ok) throw new Error("Failed to review document")
+  return await response.json()
 }
 
 // Fetch all documents for a committee (for chair review, voting, etc.)
