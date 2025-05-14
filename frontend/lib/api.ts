@@ -294,6 +294,16 @@ class ApiService {
     return response.data;
   }
 
+  async updateCountry(countryId: number, data: { name: string; importance: number }) {
+    const response = await this.api.put(`/countries/${countryId}`, data);
+    return response.data;
+  }
+
+  async addCountry(data: { name: string; importance: number }) {
+    const response = await this.api.post(`/countries`, data);
+    return response.data;
+  }
+
   // Block APIs
   async getBlocks(): Promise<ApiResponse<any[]>> {
     const response = await this.api.get('/blocks');
