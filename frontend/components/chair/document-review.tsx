@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle, Download, FileText, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { reviewDocument } from "@/services/api"
 
 interface DocumentReviewProps {
   committeeId: string
@@ -29,18 +30,15 @@ export function DocumentReview({ committeeId, documents, delegates }: DocumentRe
   const handleApprove = async () => {
     if (!selectedDocument) return
     setLoading(true)
-
     try {
-      // In a real app, this would call the API
-      // await reviewDocument(selectedDocument.id, { status: 'approved', feedback })
-
+      await reviewDocument(selectedDocument.document_id, { status: "approved", feedback })
       toast({
         title: "Document approved",
         description: "The document has been approved successfully.",
       })
-
-      // Reset selection
-      setSelectedDocument(null)
+      // Update document status in the UI
+      selectedDocument.status = "approved"
+      setSelectedDocument({ ...selectedDocument })
       setFeedback("")
     } catch (error) {
       console.error("Approve document error:", error)
@@ -57,18 +55,15 @@ export function DocumentReview({ committeeId, documents, delegates }: DocumentRe
   const handleReject = async () => {
     if (!selectedDocument) return
     setLoading(true)
-
     try {
-      // In a real app, this would call the API
-      // await reviewDocument(selectedDocument.id, { status: 'rejected', feedback })
-
+      await reviewDocument(selectedDocument.document_id, { status: "rejected", feedback })
       toast({
         title: "Document rejected",
         description: "The document has been rejected successfully.",
       })
-
-      // Reset selection
-      setSelectedDocument(null)
+      // Update document status in the UI
+      selectedDocument.status = "rejected"
+      setSelectedDocument({ ...selectedDocument })
       setFeedback("")
     } catch (error) {
       console.error("Reject document error:", error)

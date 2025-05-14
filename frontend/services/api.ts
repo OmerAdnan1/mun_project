@@ -588,3 +588,10 @@ export const castVote = async ({ delegate_id, document_id, vote }: { delegate_id
   // Here, just simulate
   return simulateApiCall({ vote_id: Math.floor(Math.random() * 10000), delegate_id, document_id, vote })
 }
+
+// Chair: Approve or reject a document
+export const reviewDocument = async (documentId: number, { status, feedback }: { status: "approved" | "rejected", feedback?: string }) => {
+  // In a real app, PATCH/PUT to backend: `${API_URL}/documents/${documentId}` with { status, feedback }
+  // Here, just simulate
+  return simulateApiCall({ document_id: documentId, status, feedback })
+}
