@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Download, Search } from "lucide-react"
+import { AlertCircle, Download, Search, Loader2 } from "lucide-react"
+import { apiService } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
 
 interface DelegateListProps {
   committeeId: string
@@ -19,6 +21,7 @@ export function DelegateList({ committeeId, delegates: propDelegates }: Delegate
   const [loading, setLoading] = useState(!propDelegates)
   const [searchQuery, setSearchQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (propDelegates) {
@@ -28,106 +31,36 @@ export function DelegateList({ committeeId, delegates: propDelegates }: Delegate
     }
 
     const fetchDelegates = async () => {
+      setLoading(true)
       try {
-        // In a real app, this would call the API
-        // const data = await getDelegatesByCommittee(committeeId)
-        // setDelegates(data)
-
-        // Mock data for demonstration
-        setTimeout(() => {
-          setDelegates([
-            {
-              delegate_id: "1",
-              name: "John Smith",
-              country: "France",
-              email: "john.smith@example.com",
-              status: "active",
-              position_paper: true,
-            },
-            {
-              delegate_id: "2",
-              name: "Emma Johnson",
-              country: "Germany",
-              email: "emma.johnson@example.com",
-              status: "active",
-              position_paper: true,
-            },
-            {
-              delegate_id: "3",
-              name: "Michael Brown",
-              country: "Japan",
-              email: "michael.brown@example.com",
-              status: "active",
-              position_paper: false,
-            },
-            {
-              delegate_id: "4",
-              name: "Sophia Garcia",
-              country: "Brazil",
-              email: "sophia.garcia@example.com",
-              status: "active",
-              position_paper: true,
-            },
-            {
-              delegate_id: "5",
-              name: "William Davis",
-              country: "India",
-              email: "william.davis@example.com",
-              status: "inactive",
-              position_paper: false,
-            },
-            {
-              delegate_id: "6",
-              name: "Olivia Wilson",
-              country: "South Africa",
-              email: "olivia.wilson@example.com",
-              status: "active",
-              position_paper: true,
-            },
-            {
-              delegate_id: "7",
-              name: "James Miller",
-              country: "Australia",
-              email: "james.miller@example.com",
-              status: "active",
-              position_paper: false,
-            },
-            {
-              delegate_id: "8",
-              name: "Ava Martinez",
-              country: "Canada",
-              email: "ava.martinez@example.com",
-              status: "active",
-              position_paper: true,
-            },
-            {
-              delegate_id: "9",
-              name: "Alexander Lee",
-              country: "Mexico",
-              email: "alexander.lee@example.com",
-              status: "inactive",
-              position_paper: false,
-            },
-            {
-              delegate_id: "10",
-              name: "Isabella Taylor",
-              country: "Italy",
-              email: "isabella.taylor@example.com",
-              status: "active",
-              position_paper: true,
-            },
-          ])
-          setLoading(false)
-        }, 1000)
-      } catch (err) {
-        console.error("Failed to fetch delegates:", err)
-        setError("Failed to load delegates")
+        // Get delegates assigned to this committee
+        const response = await apiService.getDelegatesByCommittee(committeeId)
+        
+        if (response.success) {
+          setDelegates(response.data)
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to load delegates"
+          })
+          setDelegates([])
+        }
+      } catch (error) {
+        console.error("Failed to fetch committee delegates:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load delegates"
+        })
+        setDelegates([])
+      } finally {
         setLoading(false)
       }
     }
-
+    
     fetchDelegates()
-  }, [committeeId, propDelegates])
+  }, [committeeId, propDelegates, toast])
 
   // Normalize delegates for rendering
   const normalizedDelegates = delegates.map((d) => ({
@@ -167,6 +100,17 @@ export function DelegateList({ committeeId, delegates: propDelegates }: Delegate
     )
   }
 
+  if (delegates.length === 0) {
+    return (
+      <Alert variant="default" className="bg-muted">
+        <AlertTitle>No delegates found</AlertTitle>
+        <AlertDescription>
+          There are no delegates assigned to this committee yet.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -178,7 +122,7 @@ export function DelegateList({ committeeId, delegates: propDelegates }: Delegate
           <Alert className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Note</AlertTitle>
-            <AlertDescription>[Sample Data] Showing example delegate list.</AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 

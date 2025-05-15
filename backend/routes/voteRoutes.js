@@ -21,4 +21,10 @@ router.get('/document/:documentId', voteController.getVotesByDocument);
 // Get votes by event
 router.get('/event/:eventId', voteController.getVotesByEvent);
 
+// Check if delegate has voted for a document
+router.get('/check', voteController.checkUserVote);
+
+// Count votes for a document
+router.get('/document/:documentId/count', voteController.countDocumentVotes);
+
 module.exports = router;

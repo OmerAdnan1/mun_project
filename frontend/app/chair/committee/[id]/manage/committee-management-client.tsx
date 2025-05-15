@@ -10,7 +10,7 @@ import { CommitteeDetails } from "@/components/chair/committee-details"
 import { DelegateList } from "@/components/chair/delegate-list"
 import { ScoreManagement } from "@/components/chair/score-management"
 import { AttendanceManagement } from "@/components/chair/attendance-management"
-import { DocumentReview } from "@/components/chair/document-review"
+import { DocumentManagement } from "@/components/chair/document-management"
 import { getCommitteeOverview } from "@/lib/api"
 
 interface Committee {
@@ -137,7 +137,7 @@ export function CommitteeManagementClient({ committeeId }: CommitteeManagementCl
         </TabsContent>
 
         <TabsContent value="documents" className="mt-6">
-          <DocumentReview committeeId={committeeId} documents={documents} delegates={delegates} />
+          <DocumentManagement committeeId={committeeId} chairId={user?.id} />
         </TabsContent>
       </Tabs>
     </div>

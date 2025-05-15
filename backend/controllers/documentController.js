@@ -6,7 +6,29 @@ exports.createDocument = async (req, res) => {
     // Map doc_link to file_url for Google Docs links
     if (req.body.doc_link) {
       req.body.file_url = req.body.doc_link;
+      // Ensure we're not storing the actual document content
+      req.body.content = null;
     }
+    
+    // Validate Google Docs link
+    if (req.body.file_url && !req.body.file_url.includes('docs.google.com')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid document link. Please provide a valid Google Docs link.'
+      });
+    }
+    
+    // ALWAYS set a due_date regardless of whether it was provided
+    // Set due date to 30 days from now by default
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+    req.body.due_date = dueDate;
+    
+    console.log('Creating document with data:', JSON.stringify({
+      ...req.body,
+      due_date: req.body.due_date
+    }, null, 2));
+    
     const document = await Document.create(req.body);
 
     res.status(201).json({
@@ -15,6 +37,7 @@ exports.createDocument = async (req, res) => {
     });
   } catch (error) {
     console.error('Create document error:', error);
+    console.error('Request body:', JSON.stringify(req.body, null, 2));
 
     // Handle specific errors
     if (error.message.includes('Delegate not found')) {
@@ -240,6 +263,91 @@ exports.getDocuments = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve documents',
+      error: error.message
+    });
+  }
+};
+
+// Change document status
+exports.changeDocumentStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!status || !['draft', 'submitted', 'approved', 'rejected', 'published'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid status is required (draft, submitted, approved, rejected, published)'
+      });
+    }
+    
+    const document = await Document.changeStatus(req.params.id, status);
+    
+    res.status(200).json({
+      success: true,
+      data: document
+    });
+  } catch (error) {
+    console.error('Change document status error:', error);
+    
+    if (error.message.includes('Invalid status')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status value',
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change document status',
+      error: error.message
+    });
+  }
+};
+
+// Publish document
+exports.publishDocument = async (req, res) => {
+  try {
+    const document = await Document.publishDocument(req.params.id);
+    
+    res.status(200).json({
+      success: true,
+      data: document
+    });
+  } catch (error) {
+    console.error('Publish document error:', error);
+    
+    if (error.message.includes('Only approved documents') || 
+        error.message.includes('needs at least 2 votes')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to publish document',
+      error: error.message
+    });
+  }
+};
+
+// Get documents eligible for voting in a committee
+exports.getVotingEligibleDocuments = async (req, res) => {
+  try {
+    const documents = await Document.getVotingEligibleDocuments(req.params.committeeId);
+    
+    res.status(200).json({
+      success: true,
+      count: documents.length,
+      data: documents
+    });
+  } catch (error) {
+    console.error('Get voting eligible documents error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve voting eligible documents',
       error: error.message
     });
   }

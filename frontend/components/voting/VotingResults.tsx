@@ -11,7 +11,10 @@ export type VotingResultsProps = {
 }
 
 export default function VotingResults({ votingData, showDetailed }: VotingResultsProps) {
-  const { votes, total_votes, countries } = votingData
+  const { votes } = votingData
+
+  // Calculate total votes
+  const total_votes = votes.yes + votes.no + votes.abstain
 
   // Calculate percentages
   const yesPercentage = total_votes > 0 ? (votes.yes / total_votes) * 100 : 0
@@ -99,22 +102,24 @@ export default function VotingResults({ votingData, showDetailed }: VotingResult
             </div>
           </div>
 
-          {showDetailed && countries && countries.length > 0 && (
+          {showDetailed && votingData.delegateVotes && votingData.delegateVotes.length > 0 && (
             <div className="mt-6">
               <h3 className="text-sm font-medium mb-3">Detailed Voting Record</h3>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Delegate</TableHead>
                       <TableHead>Country</TableHead>
                       <TableHead className="text-right">Vote</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {countries.map((country: any) => (
-                      <TableRow key={country.country_id}>
-                        <TableCell className="font-medium">{country.country_name}</TableCell>
-                        <TableCell className="text-right">{getVoteBadge(country.vote)}</TableCell>
+                    {votingData.delegateVotes.map((vote: any) => (
+                      <TableRow key={vote.vote_id}>
+                        <TableCell className="font-medium">{vote.delegate_name}</TableCell>
+                        <TableCell>{vote.country_name}</TableCell>
+                        <TableCell className="text-right">{getVoteBadge(vote.vote)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

@@ -11,6 +11,7 @@ import { AlertCircle, Calendar, CheckCircle, Clock, Download, FileText, Flag, Gl
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { apiService } from "@/lib/api"
+import { UploadDocumentDialog } from "@/components/documents/upload-document-dialog"
 
 interface Assignment {
   assignment_id: string;
@@ -54,6 +55,7 @@ export function DelegateDashboard() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
 
   useEffect(() => {
     const fetchDelegateData = async () => {
@@ -345,9 +347,14 @@ export function DelegateDashboard() {
 
         <TabsContent value="documents" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Documents</CardTitle>
-              <CardDescription>Your submitted documents and their status</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Documents</CardTitle>
+                <CardDescription>Your submitted documents and their status</CardDescription>
+              </div>
+              <Button size="sm" onClick={() => setUploadDialogOpen(true)}>
+                Upload Document
+              </Button>
             </CardHeader>
             <CardContent>
               {documents.length > 0 ? (
@@ -387,7 +394,7 @@ export function DelegateDashboard() {
                   <FileText className="h-10 w-10 text-gray-400" />
                   <p className="mt-2 text-sm font-medium">No documents yet</p>
                   <p className="text-xs text-gray-500">Upload your position paper to get started</p>
-                  <Button className="mt-4" size="sm">
+                  <Button className="mt-4" size="sm" onClick={() => setUploadDialogOpen(true)}>
                     Upload Document
                   </Button>
                 </div>
@@ -396,6 +403,25 @@ export function DelegateDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {assignment && (
+        <UploadDocumentDialog
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          delegateId={parseInt(user?.id || "0")}
+          committeeId={parseInt(assignment.committee_id)}
+          onSuccess={() => {
+            // Refresh documents after successful upload
+            if (user) {
+              apiService.getDelegateDocuments(user.id).then((res) => {
+                if (res.success) {
+                  setDocuments(res.data);
+                }
+              });
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

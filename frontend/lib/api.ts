@@ -158,6 +158,17 @@ class ApiService {
     const response = await this.api.get(`/delegates/${id}`);
     return response.data;
   }
+  
+  async getDelegatesByCommittee(committeeId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.api.get(`/delegate-assignments/committee/${committeeId}/delegates`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to fetch delegates for committee ${committeeId}:`, error);
+      if (error.response && error.response.data) return error.response.data;
+      return { success: false, data: [], message: "Failed to fetch delegates for committee" };
+    }
+  }
 
   // Committee APIs
   async getCommittees(): Promise<ApiResponse<Committee[]>> {
@@ -180,6 +191,16 @@ class ApiService {
     const response = await this.api.get('/documents');
     return response.data;
   }
+  
+  async getCommitteeDocuments(committeeId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.api.get(`/documents/committee/${committeeId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
 
   /**
    * Upload a document by Google Docs link (position paper or resolution)
@@ -188,6 +209,37 @@ class ApiService {
   async uploadDocument(data: { delegate_id: number; committee_id: number; title: string; type: string; doc_link: string }): Promise<ApiResponse<any>> {
     const response = await this.api.post('/documents', data);
     return response.data;
+  }
+
+  // Document APIs with voting functionality
+  async getVotingEligibleDocuments(committeeId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.api.get(`/documents/committee/${committeeId}/voting`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async changeDocumentStatus(documentId: string, status: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.put(`/documents/${documentId}/status`, { status });
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async publishDocument(documentId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.put(`/documents/${documentId}/publish`, {});
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
   }
 
   // Attendance APIs
@@ -264,6 +316,46 @@ class ApiService {
   async castVote(data: any): Promise<ApiResponse<any>> {
     const response = await this.api.post('/votes', data);
     return response.data;
+  }
+
+  async voteForDocument(data: { delegate_id: string, document_id: string, vote: 'for' | 'against' | 'abstain', notes?: string }): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.post('/votes', data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async checkUserVote(delegateId: string, documentId: string): Promise<ApiResponse<{hasVoted: boolean}>> {
+    try {
+      const response = await this.api.get(`/votes/check?delegateId=${delegateId}&documentId=${documentId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async getVotesForDocument(documentId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.api.get(`/votes/document/${documentId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
+  }
+
+  async getVoteCount(documentId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.api.get(`/votes/document/${documentId}/count`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      throw error;
+    }
   }
 
   // Delegate Assignment APIs
@@ -435,6 +527,21 @@ class ApiService {
   async updateDelegateInfo(id: string, data: any): Promise<ApiResponse<any>> {
     const response = await this.api.put(`/delegates/${id}`, data);
     return response.data;
+  }
+
+  // Get documents uploaded by a delegate
+  async getDelegateDocuments(delegateId: string | number): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.api.get(`/documents/delegate/${delegateId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) return error.response.data;
+      return {
+        success: false,
+        message: error.message || 'Error fetching delegate documents',
+        data: []
+      };
+    }
   }
 
   // Helper method to get current user ID

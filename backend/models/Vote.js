@@ -120,6 +120,51 @@ class Vote {
       throw error;
     }
   }
+
+  // Count votes for a document
+  static async countVotesForDocument(documentId) {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request.input('document_id', sql.Int, documentId);
+      
+      const result = await request.query(`
+        SELECT 
+          COUNT(CASE WHEN vote = 'for' THEN 1 END) as votes_for,
+          COUNT(CASE WHEN vote = 'against' THEN 1 END) as votes_against,
+          COUNT(CASE WHEN vote = 'abstain' THEN 1 END) as votes_abstain,
+          COUNT(*) as total_votes
+        FROM Votes
+        WHERE document_id = @document_id
+      `);
+      
+      return result.recordset[0];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Check if a delegate has voted for a document
+  static async hasVoted(delegateId, documentId) {
+    try {
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request.input('delegate_id', sql.Int, delegateId);
+      request.input('document_id', sql.Int, documentId);
+      
+      const result = await request.query(`
+        SELECT COUNT(*) as vote_count
+        FROM Votes
+        WHERE delegate_id = @delegate_id AND document_id = @document_id
+      `);
+      
+      return result.recordset[0].vote_count > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = Vote;

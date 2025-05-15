@@ -55,13 +55,15 @@ export default function VotingPage() {
     if (user?.role === "chair") {
       try {
         setLoading(true)
-        await updateVotingStatus(id, "in_progress")
+        // For chair users, we should update the document status to indicate voting is in progress
+        // This would typically be a backend call, but we'll just navigate for now
       } catch (err) {
         setError("Failed to start voting. Please try again.")
       } finally {
         setLoading(false)
       }
     }
+    // Navigate to the specific document voting page
     router.push(`/voting?resolution=${id}`)
   }
 
@@ -69,10 +71,14 @@ export default function VotingPage() {
     if (user?.role !== "chair") return
     try {
       setLoading(true)
-      await updateVotingStatus(id, "completed")
+      // In a real implementation, this would call an API to end voting
+      // and possibly change the document status
       const votingResponse = await fetchVotingResults(id)
       if (votingResponse && votingResponse.data) {
-        setVotingData({ ...votingResponse.data, voting_status: "completed" })
+        setVotingData({
+          ...votingResponse.data,
+          status: "published" // Update to use the correct status field
+        })
       }
     } catch (err) {
       setError("Failed to end voting. Please try again.")
@@ -83,11 +89,23 @@ export default function VotingPage() {
 
   const handleVote = (vote: "yes" | "no" | "abstain") => {
     if (!votingData || !resolutionId) return
+    
+    // In a real implementation, this would call a backend API to record the vote
+    // For now, we'll just simulate a vote being added
     setVotingData((prev: any) => {
-      const updatedVotes = { ...prev.votes }
-      updatedVotes[vote] += 1
-      return { ...prev, votes: updatedVotes }
+      const updatedVoteCount = { ...prev.voteCount }
+      
+      // Map frontend vote values to backend values
+      const voteValue = vote === "yes" ? "for" : vote === "no" ? "against" : "abstain"
+      
+      updatedVoteCount[voteValue] += 1
+      
+      return { 
+        ...prev, 
+        voteCount: updatedVoteCount 
+      }
     })
+    
     setUserHasVoted(true)
   }
 
@@ -147,49 +165,49 @@ export default function VotingPage() {
               <h2 className="text-xl font-semibold mt-8 mb-4">Available Resolutions</h2>
               {resolutions.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {resolutions.map((resolution) => (
-                    <Card key={resolution.resolution_id} className="overflow-hidden">
+                  {resolutions.map((document) => (
+                    <Card key={document.document_id} className="overflow-hidden">
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle>{resolution.title}</CardTitle>
+                            <CardTitle>{document.title}</CardTitle>
                             <CardDescription>
-                              Submitted by: {resolution.author} ({resolution.country})
+                              Submitted by: {document.delegate_name} ({document.country_name})
                             </CardDescription>
                           </div>
                           <Badge
                             className={
-                              resolution.voting_status === "active"
+                              document.status === "approved"
                                 ? "bg-green-100 text-green-800"
-                                : resolution.voting_status === "completed"
+                                : document.status === "published"
                                 ? "bg-blue-100 text-blue-800"
                                 : "bg-yellow-100 text-yellow-800"
                             }
                           >
-                            {resolution.voting_status === "active"
-                              ? "Voting Active"
-                              : resolution.voting_status === "completed"
-                              ? "Voting Completed"
-                              : "Pending"}
+                            {document.status === "approved"
+                              ? "Ready for Voting"
+                              : document.status === "published"
+                              ? "Published"
+                              : document.status === "submitted"
+                              ? "Ready for Voting"
+                              : document.status}
                           </Badge>
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-gray-700 mb-4">{resolution.description}</p>
+                        <p className="text-sm text-gray-700 mb-4">Type: {document.type.replace("_", " ")}</p>
                         <div className="flex items-center text-sm text-gray-600">
-                          <span>Submitted on: {new Date(resolution.submitted_at).toLocaleDateString()}</span>
+                          <span>Submitted on: {new Date(document.uploaded_at).toLocaleDateString()}</span>
                         </div>
                       </CardContent>
                       <CardFooter className="bg-gray-50 border-t flex justify-end py-3">
                         <Button
-                          onClick={() => handleStartVoting(resolution.resolution_id)}
-                          variant={resolution.voting_status === "completed" ? "outline" : "default"}
+                          onClick={() => handleStartVoting(document.document_id)}
+                          variant={document.status === "published" ? "outline" : "default"}
                         >
-                          {resolution.voting_status === "completed"
+                          {document.status === "published"
                             ? "View Results"
-                            : resolution.voting_status === "active"
-                            ? "Join Voting"
-                            : user.role === "chair"
+                            : user?.role === "chair"
                             ? "Start Voting"
                             : "View Details"}
                         </Button>
@@ -214,59 +232,62 @@ export default function VotingPage() {
                         <div>
                           <CardTitle className="flex items-center">
                             <FileText className="h-5 w-5 mr-2 text-blue-600" />
-                            {votingData.title}
+                            {votingData.document.title}
                           </CardTitle>
-                          <CardDescription>{votingData.committee_name}</CardDescription>
+                          <CardDescription>{votingData.document.committee_name}</CardDescription>
                         </div>
                         <Badge
                           className={
-                            votingData.voting_status === "in_progress" || votingData.voting_status === "active"
+                            votingData.document.status === "approved"
                               ? "bg-green-100 text-green-800"
-                              : votingData.voting_status === "completed"
+                              : votingData.document.status === "published"
                               ? "bg-blue-100 text-blue-800"
                               : "bg-yellow-100 text-yellow-800"
                           }
                         >
-                          {votingData.voting_status === "in_progress" || votingData.voting_status === "active"
-                            ? "Voting Active"
-                            : votingData.voting_status === "completed"
+                          {votingData.document.status === "approved"
+                            ? "Ready for Voting"
+                            : votingData.document.status === "published"
                             ? "Voting Completed"
-                            : "Pending"}
+                            : votingData.document.status}
                         </Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-700 mb-4">{votingData.description}</p>
+                      <p className="text-sm text-gray-700 mb-4">Type: {votingData.document.type.replace("_", " ")}</p>
                       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                         <div>
                           <p className="text-sm text-gray-600">
-                            Submitted by: <span className="font-medium">{votingData.author}</span> ({votingData.country})
+                            Submitted by: <span className="font-medium">{votingData.document.delegate_name}</span> ({votingData.document.country_name})
                           </p>
                           <p className="text-sm text-gray-600">
-                            Total Votes: <span className="font-medium">{votingData.votes?.yes + votingData.votes?.no + votingData.votes?.abstain || 0}</span>
+                            Total Votes: <span className="font-medium">
+                              {votingData.voteCount?.for + votingData.voteCount?.against + votingData.voteCount?.abstain || 0}
+                            </span>
                           </p>
                         </div>
                         <div className="flex gap-2">
-                          {user.role === "chair" &&
-                            (votingData.voting_status === "in_progress" || votingData.voting_status === "active") && (
+                          {user?.role === "chair" && votingData.document.status === "approved" && (
                               <Button variant="destructive" size="sm" onClick={() => handleEndVoting(resolutionId!)}>
                                 End Voting
                               </Button>
                             )}
                           <Button variant="outline" onClick={() => router.push("/voting")} size="sm">
-                            Back to All Resolutions
+                            Back to All Documents
                           </Button>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {user.role === "delegate" &&
-                      (votingData.voting_status === "in_progress" || votingData.voting_status === "active") &&
-                      !userHasVoted && (
-                        <VotingControls documentId={resolutionId!} delegateId={user.id} onVote={handleVote} />
+                    {user?.role === "delegate" && votingData.document.status === "submitted" && !userHasVoted && (
+                        <VotingControls 
+                          documentId={resolutionId!} 
+                          delegateId={parseInt(user.id)} 
+                          onVote={handleVote} 
+                        />
                       )}
-                    {userHasVoted && user.role === "delegate" && (
+                    {userHasVoted && user?.role === "delegate" && (
                       <Card>
                         <CardHeader>
                           <CardTitle>Thank You for Voting</CardTitle>
@@ -285,8 +306,15 @@ export default function VotingPage() {
                       </Card>
                     )}
                     <VotingResults
-                      votingData={votingData}
-                      showDetailed={user.role === "chair" || votingData.voting_status === "completed"}
+                      votingData={{
+                        votes: {
+                          yes: votingData.voteCount.for,
+                          no: votingData.voteCount.against,
+                          abstain: votingData.voteCount.abstain
+                        },
+                        status: votingData.document.status
+                      }}
+                      showDetailed={user?.role === "chair" || votingData.document.status === "published"}
                     />
                   </div>
                 </div>

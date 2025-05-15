@@ -537,26 +537,57 @@ function generateScheduleForDay(day: number) {
 
 // Fetch all resolutions available for voting (documents that require voting)
 export const fetchResolutionsForVoting = async (committeeId: number) => {
-  // In a real app, fetch from backend: `${API_URL}/documents?committee_id=${committeeId}&requires_voting=true`
-  // Here, return mock data
-  const resolutions = Array.from({ length: 3 }, (_, i) => ({
-    resolution_id: i + 1,
-    title: `Resolution ${i + 1}`,
-    description: `Description for resolution ${i + 1}`,
-    author: ["France", "USA", "China"][i],
-    country: ["France", "USA", "China"][i],
-    voting_status: i === 0 ? "active" : i === 1 ? "completed" : "pending",
-    submitted_at: new Date(Date.now() - i * 86400000).toISOString(),
-  }))
-  return simulateApiCall({ data: resolutions, count: resolutions.length })
+  try {
+    console.log(`Fetching voting documents for committee ${committeeId}`)
+    const response = await fetch(`${API_URL}/documents/committee/${committeeId}/voting`)
+    if (!response.ok) {
+      console.error(`Failed to fetch documents: ${response.status} ${response.statusText}`)
+      throw new Error("Failed to fetch voting eligible documents")
+    }
+    const data = await response.json()
+    console.log('Voting documents response:', data)
+    return data
+  } catch (error) {
+    console.error("Error fetching resolutions for voting:", error)
+    return { success: false, data: [], message: "Failed to fetch resolutions" }
+  }
 }
 
 // Fetch voting results for a resolution (document)
 export const fetchVotingResults = async (documentId: number) => {
-  // Real backend call
-  const response = await fetch(`${API_URL}/votes/document/${documentId}`)
-  if (!response.ok) throw new Error("Failed to fetch voting results")
-  return await response.json()
+  try {
+    console.log(`Fetching document details for document ${documentId}`)
+    // First get the document details
+    const documentResponse = await fetch(`${API_URL}/documents/${documentId}`)
+    if (!documentResponse.ok) throw new Error("Failed to fetch document")
+    const documentData = await documentResponse.json()
+    console.log('Document details:', documentData)
+    
+    // Then get the votes for this document
+    console.log(`Fetching votes for document ${documentId}`)
+    const votesResponse = await fetch(`${API_URL}/votes/document/${documentId}`)
+    if (!votesResponse.ok) throw new Error("Failed to fetch voting results")
+    const votesData = await votesResponse.json()
+    console.log('Votes data:', votesData)
+    
+    const result = {
+      success: true,
+      data: {
+        document: documentData.data,
+        votes: votesData.data || [],
+        voteCount: {
+          for: votesData.data?.filter((v: any) => v.vote === 'for').length || 0,
+          against: votesData.data?.filter((v: any) => v.vote === 'against').length || 0,
+          abstain: votesData.data?.filter((v: any) => v.vote === 'abstain').length || 0,
+        }
+      }
+    }
+    console.log('Combined voting results:', result)
+    return result
+  } catch (error) {
+    console.error("Error fetching voting results:", error)
+    return { success: false, data: null, message: "Failed to fetch voting results" }
+  }
 }
 
 // Update voting status for a document (start/end voting)
@@ -573,11 +604,18 @@ export const updateVotingStatus = async (documentId: number, status: "in_progres
 
 // Cast a vote for a document
 export const castVote = async ({ delegate_id, document_id, vote }: { delegate_id: number, document_id: number, vote: "yes" | "no" | "abstain" }) => {
+  // Map frontend vote values to backend values
+  const voteValue = vote === "yes" ? "for" : vote === "no" ? "against" : "abstain"
+  
   // Real backend call
   const response = await fetch(`${API_URL}/votes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ delegate_id, document_id, vote })
+    body: JSON.stringify({ 
+      delegate_id, 
+      document_id, 
+      vote: voteValue 
+    })
   })
   if (!response.ok) throw new Error("Failed to cast vote")
   return await response.json()

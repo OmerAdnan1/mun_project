@@ -109,13 +109,15 @@ export function CommitteeDetails({ committee, refreshCommittee }: CommitteeDetai
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <FileText className="mr-2 h-5 w-5 text-amber-500" />
-                <span className="text-2xl font-bold">5</span>
+                <span className="text-2xl font-bold">{committee.pending_documents || 5}</span>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => window.location.href = `#documents`}>
                 Review
               </Button>
             </div>
-            <div className="mt-2 text-xs text-gray-500">3 position papers, 2 draft resolutions</div>
+            <div className="mt-2 text-xs text-gray-500">
+              {committee.position_papers_count || 3} position papers, {committee.resolutions_count || 2} draft resolutions
+            </div>
           </CardContent>
         </Card>
       </div>

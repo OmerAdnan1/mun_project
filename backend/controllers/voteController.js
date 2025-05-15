@@ -175,3 +175,52 @@ exports.getVotesByEvent = async (req, res) => {
     });
   }
 };
+
+// Check if delegate has voted for a document
+exports.checkUserVote = async (req, res) => {
+  try {
+    const { delegateId, documentId } = req.query;
+    
+    if (!delegateId || !documentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delegate ID and Document ID are required'
+      });
+    }
+    
+    const hasVoted = await Vote.hasVoted(delegateId, documentId);
+    
+    res.status(200).json({
+      success: true,
+      data: { hasVoted }
+    });
+  } catch (error) {
+    console.error('Check user vote error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check if user has voted',
+      error: error.message
+    });
+  }
+};
+
+// Count votes for a document
+exports.countDocumentVotes = async (req, res) => {
+  try {
+    const documentId = req.params.documentId;
+    
+    const voteCount = await Vote.countVotesForDocument(documentId);
+    
+    res.status(200).json({
+      success: true,
+      data: voteCount
+    });
+  } catch (error) {
+    console.error('Count document votes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to count document votes',
+      error: error.message
+    });
+  }
+};

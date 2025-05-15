@@ -132,6 +132,85 @@ class Document {
       throw error;
     }
   }
+
+  // Change document status
+  static async changeStatus(documentId, newStatus) {
+    try {
+      console.log(`[Document.changeStatus] documentId: ${documentId}, newStatus: ${newStatus}`);
+      const pool = await poolPromise;
+      const request = pool.request();
+      
+      request.input('document_id', sql.Int, documentId);
+      request.input('new_status', sql.VarChar(10), newStatus);
+      
+      await request.execute('sp_ChangeDocumentStatus');
+      
+      // Return the updated document
+      return this.getById(documentId);
+    } catch (error) {
+      console.error('[Document.changeStatus] error:', error);
+      throw error;
+    }
+  }
+
+  // Publish document
+  static async publishDocument(documentId) {
+    try {
+      console.log(`[Document.publishDocument] documentId: ${documentId}`);
+      
+      // First, check if document meets requirements for publishing
+      const document = await this.getById(documentId);
+      
+      if (!document) {
+        throw new Error('Document not found');
+      }
+      
+      if (document.status !== 'approved') {
+        throw new Error('Only approved documents can be published');
+      }
+      
+      // Check vote count
+      const Vote = require('./Vote');
+      const voteCount = await Vote.countVotesForDocument(documentId);
+      
+      if (voteCount.total_votes < 2) {
+        throw new Error('Document needs at least 2 votes to be published');
+      }
+      
+      return this.changeStatus(documentId, 'published');
+    } catch (error) {
+      console.error('[Document.publishDocument] error:', error);
+      throw error;
+    }
+  }
+
+  // Get documents eligible for voting
+  static async getVotingEligibleDocuments(committeeId) {
+    try {
+      console.log(`[Document.getVotingEligibleDocuments] committeeId: ${committeeId}`);
+      const pool = await poolPromise;
+      const request = pool.request();
+
+      request.input('committee_id', sql.Int, committeeId);
+      
+      const result = await request.query(`
+        SELECT d.*, u.full_name AS delegate_name, co.name AS country_name, c.name AS committee_name
+        FROM Documents d
+        JOIN Users u ON d.delegate_id = u.user_id
+        JOIN DelegateAssignments da ON d.delegate_id = da.delegate_id
+        JOIN Countries co ON da.country_id = co.country_id
+        JOIN Committees c ON da.committee_id = c.committee_id
+        WHERE da.committee_id = @committee_id 
+        AND (d.status = 'submitted' OR d.status = 'approved' OR d.status = 'published')
+        AND d.requires_voting = 1
+      `);
+      
+      return result.recordset;
+    } catch (error) {
+      console.error('[Document.getVotingEligibleDocuments] error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = Document;

@@ -9,7 +9,6 @@ import { AlertCircle, ArrowRight, Clock, FileText, Users } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { apiService } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
 
 interface Committee {
   id: string
@@ -25,7 +24,6 @@ export function ChairDashboard() {
   const [committees, setCommittees] = useState<Committee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
 
   useEffect(() => {
     const fetchChairData = async () => {
@@ -57,13 +55,24 @@ export function ChairDashboard() {
           title: "Error",
           description: "Failed to load chair data"
         })
+      }
+          },
+          {
+            id: "2",
+            name: "World Health Organization",
+            topic: "Global Pandemic Response",
+            delegate_count: 20,
+            next_session: "Tomorrow, 10:00 AM",
+            pending_documents: 5,
+          },
+        ])
       } finally {
         setLoading(false)
       }
     }
 
     fetchChairData()
-  }, [user?.id, toast])
+  }, [user?.id])
 
   if (loading) {
     return (
@@ -84,8 +93,8 @@ export function ChairDashboard() {
       {error && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle>Note</AlertTitle>
+          <AlertDescription>[Sample Data] Showing example chair data.</AlertDescription>
         </Alert>
       )}
 
